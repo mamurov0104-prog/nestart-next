@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
-import { ApolloClient, ApolloLink, InMemoryCache, split, from, NormalizedCacheObject } from '@apollo/client';
+import { ApolloClient, ApolloLink, InMemoryCache, from, NormalizedCacheObject } from '@apollo/client';
 import createUploadLink from 'apollo-upload-client/public/createUploadLink.js';
-import { WebSocketLink } from '@apollo/client/link/ws';
-import { getMainDefinition } from '@apollo/client/utilities';
 import { onError } from '@apollo/client/link/error';
 import { getJwtToken } from '../libs/auth';
 import { TokenRefreshLink } from 'apollo-link-token-refresh';
 let apolloClient: ApolloClient<NormalizedCacheObject>;
+
+/** Must match nestar `PORT_API` + `/graphql` (see nestar/.env). */
+const DEFAULT_API_ORIGIN = 'http://localhost:3007';
+const DEFAULT_GRAPHQL_HTTP = `${DEFAULT_API_ORIGIN}/graphql`;
 
 function getHeaders() {
 	const headers = {} as HeadersInit;
@@ -42,19 +44,7 @@ function createIsomorphicLink() {
 
 		// @ts-ignore
 		const link = new createUploadLink({
-			uri: process.env.REACT_APP_API_GRAPHQL_URL,
-		});
-
-		/* WEBSOCKET SUBSCRIPTION LINK */
-		const wsLink = new WebSocketLink({
-			uri: process.env.REACT_APP_API_WS ?? 'ws://127.0.0.1:3007',
-			options: {
-				reconnect: false,
-				timeout: 30000,
-				connectionParams: () => {
-					return { headers: getHeaders() };
-				},
-			},
+			uri: process.env.REACT_APP_API_GRAPHQL_URL || DEFAULT_GRAPHQL_HTTP,
 		});
 
 		const errorLink = onError(({ graphQLErrors, networkError, response }) => {
@@ -69,16 +59,10 @@ function createIsomorphicLink() {
 			}
 		});
 
-		const splitLink = split(
-			({ query }) => {
-				const definition = getMainDefinition(query);
-				return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
-			},
-			wsLink,
-			authLink.concat(link),
-		);
+		// Subscriptions not used; WS to Nest Apollo often fails without graphql-ws setup.
+		const httpLink = authLink.concat(link);
 
-		return from([errorLink, tokenRefreshLink, splitLink]);
+		return from([errorLink, tokenRefreshLink, httpLink]);
 	}
 }
 
