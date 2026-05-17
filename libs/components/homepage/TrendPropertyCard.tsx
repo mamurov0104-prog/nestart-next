@@ -12,7 +12,7 @@ import { userVar } from '../../../apollo/store';
 
 interface TrendPropertyCardProps {
 	property: Property;
-	likePropertyHandler?: (user: any, id: string) => Promise<void> | void;
+	likePropertyHandler: any;
 }
 
 const TrendPropertyCard = (props: TrendPropertyCardProps) => {
@@ -22,7 +22,10 @@ const TrendPropertyCard = (props: TrendPropertyCardProps) => {
 	const user = useReactiveVar(userVar);
 
 	/** HANDLERS **/
-	// Render trend property card and attach like button behavior via props.
+	const pushDetailHandler = async (propertyId: string) => {
+		console.log('id', propertyId);
+		await router.push(`property/detail?id=${propertyId}`);
+	};
 
 	if (device === 'mobile') {
 		return (
@@ -31,11 +34,14 @@ const TrendPropertyCard = (props: TrendPropertyCardProps) => {
 					component={'div'}
 					className={'card-img'}
 					style={{ backgroundImage: `url(${REACT_APP_API_URL}/${property?.propertyImages[0]})` }}
+					onClick={() => pushDetailHandler(property._id)}
 				>
 					<div>${property.propertyPrice}</div>
 				</Box>
 				<Box component={'div'} className={'info'}>
-					<strong className={'title'}>{property.propertyTitle}</strong>
+					<strong className={'title'} onClick={() => pushDetailHandler(property._id)}>
+						{property.propertyTitle}
+					</strong>
 					<p className={'desc'}>{property.propertyDesc ?? 'no description'}</p>
 					<div className={'options'}>
 						<div>
@@ -64,7 +70,9 @@ const TrendPropertyCard = (props: TrendPropertyCardProps) => {
 							<Typography className="view-cnt">{property?.propertyViews}</Typography>
 							<IconButton
 								color={'default'}
-								onClick={() => likePropertyHandler && likePropertyHandler(user, property?._id)}
+								onClick={() => {
+									likePropertyHandler(user, property?._id);
+								}}
 							>
 								{property?.meLiked && property?.meLiked[0]?.myFavorite ? (
 									<FavoriteIcon style={{ color: 'red' }} />
@@ -85,11 +93,14 @@ const TrendPropertyCard = (props: TrendPropertyCardProps) => {
 					component={'div'}
 					className={'card-img'}
 					style={{ backgroundImage: `url(${REACT_APP_API_URL}/${property?.propertyImages[0]})` }}
+					onClick={() => pushDetailHandler(property._id)}
 				>
 					<div>${property.propertyPrice}</div>
 				</Box>
 				<Box component={'div'} className={'info'}>
-					<strong className={'title'}>{property.propertyTitle}</strong>
+					<strong className={'title'} onClick={() => pushDetailHandler(property._id)}>
+						{property.propertyTitle}{' '}
+					</strong>
 					<p className={'desc'}>{property.propertyDesc ?? 'no description'}</p>
 					<div className={'options'}>
 						<div>
@@ -118,7 +129,9 @@ const TrendPropertyCard = (props: TrendPropertyCardProps) => {
 							<Typography className="view-cnt">{property?.propertyViews}</Typography>
 							<IconButton
 								color={'default'}
-								onClick={() => likePropertyHandler && likePropertyHandler(user, property?._id)}
+								onClick={() => {
+									likePropertyHandler(user, property?._id);
+								}}
 							>
 								{property?.meLiked && property?.meLiked[0]?.myFavorite ? (
 									<FavoriteIcon style={{ color: 'red' }} />

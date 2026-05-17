@@ -9,11 +9,11 @@ import TopPropertyCard from './TopPropertyCard';
 import { PropertiesInquiry } from '../../types/property/property.input';
 import { Property } from '../../types/property/property';
 import { GET_PROPERTIES } from '../../../apollo/user/query';
-import { T } from '../../types/common';
 import { useMutation, useQuery } from '@apollo/client';
 import { LIKE_TARGET_PROPERTY } from '../../../apollo/user/mutation';
 import { sweetMixinErrorAlert, sweetTopSmallSuccessAlert } from '../../sweetAlert';
-import { Messages } from '../../config';
+import { Message } from '../../enums/common.enum';
+import { T } from '../../types/common';
 
 interface TopPropertiesProps {
 	initialInput: PropertiesInquiry;
@@ -24,40 +24,42 @@ const TopProperties = (props: TopPropertiesProps) => {
 	const device = useDeviceDetect();
 	const [topProperties, setTopProperties] = useState<Property[]>([]);
 
+	/** APOLLO REQUESTS **/
 	const [likeTargetProperty] = useMutation(LIKE_TARGET_PROPERTY);
 
-	/** APOLLO SO'ROVLARI **/
-	// Top Properties bo'limi uchun mulklar ro'yxatini olish.
-	// Avval cache ishlatiladi, so'ng tarmoqdan yangi ma'lumot olinadi.
 	const {
-  loading: getPropertiesLoading,
-  data: getPropertiesData,
-  error: getPropertiesError,
-  refetch: getPropertiesRefetch,
-} = useQuery(GET_PROPERTIES, {
-  fetchPolicy: 'cache-and-network',
-  variables: { input: initialInput },
-  notifyOnNetworkStatusChange: true,
-  onCompleted: (data: T) => {
-    setTopProperties(data?.getProperties?.list);
-  },
-});
-	/** HANDLARLAR **/
+		loading: getPropertiesLoading,
+		data: getPropertiesData,
+		error: getPropertiesError,
+		refetch: getPropertiesRefetch,
+	} = useQuery(GET_PROPERTIES, {
+		fetchPolicy: 'cache-and-network',
+		variables: { input: initialInput },
+		notifyOnNetworkStatusChange: true,
+		onCompleted(data: T) {
+			setTopProperties(data?.getProperties?.list);
+		},
+	});
+
+	/** HANDLERS **/
 	const likePropertyHandler = async (user: T, id: string) => {
-		// Foydalanuvchi like bosganda bu funksiya ishga tushadi.
-		// Agar foydalanuvchi tizimga kirmagan bo'lsa, xatolik chiqaradi.
 		try {
 			if (!id) return;
-			if (!user?._id) throw new Error(Messages.error2);
-			await likeTargetProperty({ variables: { input: id } });
+			if (!user._id) throw new Error(Message.NOT_AUTHENTICATED);
+
+			await likeTargetProperty({
+				variables: { input: id },
+			});
+
 			await getPropertiesRefetch({ input: initialInput });
+
 			await sweetTopSmallSuccessAlert('success', 800);
-		} catch (error: any) {
-			console.log('Error, likePropertyHandler', error.message);
-			sweetMixinErrorAlert(error.message);
+		} catch (err: any) {
+			console.log('ERROR, likePropertyHandler:', err.message);
+			sweetMixinErrorAlert(err.message).then();
 		}
 	};
-
+	
 	if (device === 'mobile') {
 		return (
 			<Stack className={'top-properties'}>
@@ -76,7 +78,7 @@ const TopProperties = (props: TopPropertiesProps) => {
 							{topProperties.map((property: Property) => {
 								return (
 									<SwiperSlide className={'top-property-slide'} key={property?._id}>
-										<TopPropertyCard property={property} likePropertyHandler={likePropertyHandler}/>
+										<TopPropertyCard property={property} likePropertyHandler={likePropertyHandler} />
 									</SwiperSlide>
 								);
 							})}

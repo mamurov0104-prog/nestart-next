@@ -10,8 +10,8 @@ import { Property } from '../../types/property/property';
 import Link from 'next/link';
 import { PropertiesInquiry } from '../../types/property/property.input';
 import { GET_PROPERTIES } from '../../../apollo/user/query';
-import { T } from '../../types/common';
 import { useQuery } from '@apollo/client';
+import { T } from '../../types/common';
 
 interface PopularPropertiesProps {
 	initialInput: PropertiesInquiry;
@@ -22,29 +22,23 @@ const PopularProperties = (props: PopularPropertiesProps) => {
 	const device = useDeviceDetect();
 	const [popularProperties, setPopularProperties] = useState<Property[]>([]);
 
-	// Bu komponent asosiy sahifadagi mashhur mulklar bo'limini boshqaradi.
-	// `initialInput` orqali API so'rovi parametrlarini uzatamiz va natijalarni state ichida saqlaymiz.
-	// Mobil va desktop uchun alohida dizaynlar mavjud.
-
-	/** APOLLO SO'ROVLARI **/
-	// GET_PROPERTIES query orqali mulklar ro'yxatini olish.
-	// `cache-and-network` rejimi avval kechadan foydalanadi, so'ngra tarmoqdan yangilaydi.
+	/** APOLLO REQUESTS **/
 	const {
-  loading: getPropertiesLoading,
-  data: getPropertiesData,
-  error: getPropertiesError,
-  refetch: getPropertiesRefetch,
-} = useQuery(GET_PROPERTIES, {
-  fetchPolicy: 'cache-and-network',
-  variables: { input: initialInput },
-  notifyOnNetworkStatusChange: true,
-  onCompleted: (data: T) => {
-    setPopularProperties(data?.getProperties?.list);
-  },
-});
-	/** RENDER QO'IDALARI VA HODISALAR **/
+			loading: getPropertiesLoading,
+			data: getPropertiesData,
+			error: getPropertiesError,
+			refetch: getPropertiesRefetch,
+		} = useQuery(GET_PROPERTIES, {
+			fetchPolicy: 'cache-and-network',
+			variables: { input: initialInput },
+			notifyOnNetworkStatusChange: true,
+			onCompleted(data: T) {
+				setPopularProperties(data?.getProperties?.list);
+			},
+		});
 
-	// Agar ma'lumot hali kelmagan bo'lsa, hech narsa chizmang.
+	/** HANDLERS **/
+
 	if (!popularProperties) return null;
 
 	if (device === 'mobile') {
