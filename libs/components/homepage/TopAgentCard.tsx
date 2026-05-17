@@ -16,6 +16,8 @@ const TopAgentCard = (props: TopAgentProps) => {
 		: '/img/profile/defaultUser.svg';
 
 	/** HANDLERS **/
+	// Agent card rendering is the same on desktop and mobile.
+	// The fallback image ensures the UI remains stable when no memberImage exists.
 
 	if (device === 'mobile') {
 		return (

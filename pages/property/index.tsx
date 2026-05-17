@@ -11,6 +11,12 @@ import { Property } from '../../libs/types/property/property';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import { Direction } from '../../libs/enums/common.enum';
+import { useMutation, useQuery } from '@apollo/client';
+import { GET_PROPERTIES } from '../../apollo/user/query';
+import { T } from '../../libs/types/common';
+import { LIKE_TARGET_PROPERTY } from '../../apollo/user/mutation';
+import { sweetMixinErrorAlert, sweetTopSmallSuccessAlert } from '../../libs/sweetAlert';
+import { Message } from '../../libs/enums/common.enum';
 
 export const getStaticProps = async ({ locale }: any) => ({
 	props: {
@@ -32,18 +38,41 @@ const PropertyList: NextPage = ({ initialInput, ...props }: any) => {
 	const [filterSortName, setFilterSortName] = useState('New');
 
 	/** APOLLO REQUESTS **/
+	const [likeTargetProperty] = useMutation(LIKE_TARGET_PROPERTY);
+
+	const {
+		loading: getPropertiesLoading,
+		data: getPropertiesData,
+		error: getPropertiesError,
+		refetch: getPropertiesRefetch,
+	} = useQuery(GET_PROPERTIES, {
+		fetchPolicy: 'network-only',
+		variables: {
+			input: searchFilter,
+		},
+		notifyOnNetworkStatusChange: true,
+		onCompleted: (data: T) => {
+			setProperties(data?.getProperties?.list);
+			setTotal(data?.getProperties?.metaCounter[0]?.total);
+		},
+	});
 
 	/** LIFECYCLES **/
 	useEffect(() => {
 		if (router.query.input) {
 			const inputObj = JSON.parse(router?.query?.input as string);
+			console.log('++++inputObj', inputObj);
 			setSearchFilter(inputObj);
 		}
 
-		setCurrentPage(searchFilter.page === undefined ? 1 : searchFilter.page);
+		console.log('searchFilter.page', searchFilter.page);
+		setCurrentPage(searchFilter.page === undefined ? 1 : Number(searchFilter.page));
 	}, [router]);
 
-	useEffect(() => {}, [searchFilter]);
+	useEffect(() => {
+		console.log('searchFilter', searchFilter);
+		getPropertiesRefetch({ input: searchFilter }).then();
+	}, [searchFilter]);
 
 	/** HANDLERS **/
 	const handlePaginationChange = async (event: ChangeEvent<unknown>, value: number) => {
@@ -56,6 +85,24 @@ const PropertyList: NextPage = ({ initialInput, ...props }: any) => {
 			},
 		);
 		setCurrentPage(value);
+	};
+
+	const likePropertyHandler = async (user: T, id: string) => {
+		try {
+			if (!id) return;
+			if (!user._id) throw new Error(Message.NOT_AUTHENTICATED);
+
+			await likeTargetProperty({
+				variables: { input: id },
+			});
+
+			await getPropertiesRefetch({ input: initialInput });
+
+			await sweetTopSmallSuccessAlert('success', 800);
+		} catch (err: any) {
+			console.log('ERROR, likePropertyHandler:', err.message);
+			sweetMixinErrorAlert(err.message).then();
+		}
 	};
 
 	const sortingClickHandler = (e: MouseEvent<HTMLElement>) => {
@@ -140,7 +187,9 @@ const PropertyList: NextPage = ({ initialInput, ...props }: any) => {
 									</div>
 								) : (
 									properties.map((property: Property) => {
-										return <PropertyCard property={property} key={property?._id} />;
+										return (
+											<PropertyCard property={property} key={property?._id} likePropertyHandler={likePropertyHandler} />
+										);
 									})
 								)}
 							</Stack>

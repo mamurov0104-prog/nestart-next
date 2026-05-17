@@ -24,8 +24,9 @@ const TrendProperties = (props: TrendPropertiesProps) => {
 	const device = useDeviceDetect();
 	const [trendProperties, setTrendProperties] = useState<Property[]>([]);
 
-	/** APOLLO REQUESTS **/
-
+	/** APOLLO SO'ROVLARI **/
+	// Trend Properties bo'limi uchun mulklar ro'yxatini olish.
+	// Bu komponent `propertyLikes` bo'yicha saralashni ko'rsatadi.
 	const [likeTargetProperty] = useMutation(LIKE_TARGET_PROPERTY);
 
 	const {
@@ -42,9 +43,10 @@ const TrendProperties = (props: TrendPropertiesProps) => {
 		},
 	});
 
-	/** HANDLERS **/
+	/** HANDLARLAR **/
 
 	const likePropertyHandler = async (user: T, id: string) => {
+		// Like tugmasi bosilganda mulkga like qo'shish va ro'yxatni yangilash.
 		try {
 			if (!id) return;
 			if (!user?._id) throw new Error(Messages.error2);

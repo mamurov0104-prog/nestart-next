@@ -26,10 +26,9 @@ const TopProperties = (props: TopPropertiesProps) => {
 
 	const [likeTargetProperty] = useMutation(LIKE_TARGET_PROPERTY);
 
-
-	/** APOLLO REQUESTS **/
-	
-
+	/** APOLLO SO'ROVLARI **/
+	// Top Properties bo'limi uchun mulklar ro'yxatini olish.
+	// Avval cache ishlatiladi, so'ng tarmoqdan yangi ma'lumot olinadi.
 	const {
   loading: getPropertiesLoading,
   data: getPropertiesData,
@@ -43,8 +42,10 @@ const TopProperties = (props: TopPropertiesProps) => {
     setTopProperties(data?.getProperties?.list);
   },
 });
-	/** HANDLERS **/
+	/** HANDLARLAR **/
 	const likePropertyHandler = async (user: T, id: string) => {
+		// Foydalanuvchi like bosganda bu funksiya ishga tushadi.
+		// Agar foydalanuvchi tizimga kirmagan bo'lsa, xatolik chiqaradi.
 		try {
 			if (!id) return;
 			if (!user?._id) throw new Error(Messages.error2);

@@ -22,6 +22,7 @@ const TrendPropertyCard = (props: TrendPropertyCardProps) => {
 	const user = useReactiveVar(userVar);
 
 	/** HANDLERS **/
+	// Render trend property card and attach like button behavior via props.
 
 	if (device === 'mobile') {
 		return (

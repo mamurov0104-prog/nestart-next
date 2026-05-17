@@ -22,7 +22,13 @@ const PopularProperties = (props: PopularPropertiesProps) => {
 	const device = useDeviceDetect();
 	const [popularProperties, setPopularProperties] = useState<Property[]>([]);
 
-	/** APOLLO REQUESTS **/
+	// Bu komponent asosiy sahifadagi mashhur mulklar bo'limini boshqaradi.
+	// `initialInput` orqali API so'rovi parametrlarini uzatamiz va natijalarni state ichida saqlaymiz.
+	// Mobil va desktop uchun alohida dizaynlar mavjud.
+
+	/** APOLLO SO'ROVLARI **/
+	// GET_PROPERTIES query orqali mulklar ro'yxatini olish.
+	// `cache-and-network` rejimi avval kechadan foydalanadi, so'ngra tarmoqdan yangilaydi.
 	const {
   loading: getPropertiesLoading,
   data: getPropertiesData,
@@ -36,8 +42,9 @@ const PopularProperties = (props: PopularPropertiesProps) => {
     setPopularProperties(data?.getProperties?.list);
   },
 });
-	/** HANDLERS **/
+	/** RENDER QO'IDALARI VA HODISALAR **/
 
+	// Agar ma'lumot hali kelmagan bo'lsa, hech narsa chizmang.
 	if (!popularProperties) return null;
 
 	if (device === 'mobile') {

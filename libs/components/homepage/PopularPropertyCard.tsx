@@ -20,6 +20,7 @@ const PopularPropertyCard = (props: PopularPropertyCardProps) => {
 	const user = useReactiveVar(userVar);
 
 	/** HANDLERS **/
+	// This card is purely presentational; device-specific layouts are rendered below.
 
 	if (device === 'mobile') {
 		return (
