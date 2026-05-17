@@ -41,9 +41,8 @@ function createIsomorphicLink() {
 		});
 
 		// @ts-ignore
-		const apiGraphqlUrl = process.env.REACT_APP_API_GRAPHQL_URL || 'http://localhost:3007/graphql';
 		const link = new createUploadLink({
-			uri: apiGraphqlUrl,
+			uri: process.env.REACT_APP_API_GRAPHQL_URL,
 		});
 
 		/* WEBSOCKET SUBSCRIPTION LINK */

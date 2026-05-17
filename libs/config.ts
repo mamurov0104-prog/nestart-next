@@ -1,4 +1,4 @@
-export const REACT_APP_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3007';
+export const REACT_APP_API_URL = `${process.env.REACT_APP_API_URL}`;
 
 export const availableOptions = ['propertyBarter', 'propertyRent'];
 
@@ -20,4 +20,4 @@ export const Messages = {
 	error5: 'Only images with jpeg, jpg, png format allowed!',
 };
 
-const topPropertyRank = 50;
+export const topPropertyRank = 2;
