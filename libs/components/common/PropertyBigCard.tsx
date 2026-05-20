@@ -13,7 +13,7 @@ import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
 
 interface PropertyBigCardProps {
 	property: Property;
-	likePropertyHandler: any
+	likePropertyHandler?: any;
 }
 
 const PropertyBigCard = (props: PropertyBigCardProps) => {
@@ -37,7 +37,7 @@ const PropertyBigCard = (props: PropertyBigCardProps) => {
 					className={'card-img'}
 					style={{ backgroundImage: `url(${REACT_APP_API_URL}/${property?.propertyImages?.[0]})` }}
 				>
-					{property?.propertyRank && property?.propertyRank >= topPropertyRank && (
+					{property && property?.propertyRank >= topPropertyRank && (
 						<div className={'status'}>
 							<img src="/img/icons/electricity.svg" alt="" />
 							<span>top</span>
@@ -77,7 +77,8 @@ const PropertyBigCard = (props: PropertyBigCardProps) => {
 							<IconButton
 								color={'default'}
 								onClick={(e) => {
-									e.stopPropagation(); likePropertyHandler(user, property._id)
+									e.stopPropagation();
+									likePropertyHandler(user, property?._id);
 								}}
 							>
 								{property?.meLiked && property?.meLiked[0]?.myFavorite ? (

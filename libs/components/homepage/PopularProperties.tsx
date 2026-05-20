@@ -10,8 +10,8 @@ import { Property } from '../../types/property/property';
 import Link from 'next/link';
 import { PropertiesInquiry } from '../../types/property/property.input';
 import { GET_PROPERTIES } from '../../../apollo/user/query';
-import { T } from '../../types/common';
 import { useQuery } from '@apollo/client';
+import { T } from '../../types/common';
 
 interface PopularPropertiesProps {
 	initialInput: PropertiesInquiry;
@@ -24,18 +24,19 @@ const PopularProperties = (props: PopularPropertiesProps) => {
 
 	/** APOLLO REQUESTS **/
 	const {
-  loading: getPropertiesLoading,
-  data: getPropertiesData,
-  error: getPropertiesError,
-  refetch: getPropertiesRefetch,
-} = useQuery(GET_PROPERTIES, {
-  fetchPolicy: 'cache-and-network',
-  variables: { input: initialInput },
-  notifyOnNetworkStatusChange: true,
-  onCompleted: (data: T) => {
-    setPopularProperties(data?.getProperties?.list);
-  },
-});
+			loading: getPropertiesLoading,
+			data: getPropertiesData,
+			error: getPropertiesError,
+			refetch: getPropertiesRefetch,
+		} = useQuery(GET_PROPERTIES, {
+			fetchPolicy: 'cache-and-network',
+			variables: { input: initialInput },
+			notifyOnNetworkStatusChange: true,
+			onCompleted(data: T) {
+				setPopularProperties(data?.getProperties?.list);
+			},
+		});
+
 	/** HANDLERS **/
 
 	if (!popularProperties) return null;

@@ -3,11 +3,13 @@ import { NextPage } from 'next';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
 import { Button, Stack, Typography } from '@mui/material';
 import axios from 'axios';
-import { REACT_APP_API_URL } from '../../config';
-import { getJwtToken } from '../../auth';
-import { useReactiveVar } from '@apollo/client';
+import { Messages, REACT_APP_API_URL } from '../../config';
+import { getJwtToken, updateStorage, updateUserInfo } from '../../auth';
+import { useMutation, useReactiveVar } from '@apollo/client';
 import { userVar } from '../../../apollo/store';
 import { MemberUpdate } from '../../types/member/member.update';
+import { UPDATE_MEMBER } from '../../../apollo/user/mutation';
+import { sweetErrorHandling, sweetMixinSuccessAlert } from '../../sweetAlert';
 
 const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 	const device = useDeviceDetect();
@@ -16,6 +18,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 	const [updateData, setUpdateData] = useState<MemberUpdate>(initialValues);
 
 	/** APOLLO REQUESTS **/
+	const [updateMember] = useMutation(UPDATE_MEMBER);
 
 	/** LIFECYCLES **/
 	useEffect(() => {
@@ -74,7 +77,25 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		}
 	};
 
-	const updatePropertyHandler = useCallback(async () => {}, [updateData]);
+	const updateMemberHandler = useCallback(async () => {
+		try {
+			if (!user._id) throw new Error(Messages.error2);
+			updateData._id = user._id;
+			const result = await updateMember({
+				variables: {
+					input: updateData,
+				},
+			});
+
+			//@ts-ignore
+			const jwtToken = result.data.updateMember?.accessToken;
+			await updateStorage({ jwtToken });
+			updateUserInfo(result.data.updateMember?.accessToken);
+			await sweetMixinSuccessAlert('Information update successfully');
+		} catch (err: any) {
+			sweetErrorHandling(err).then();
+		}
+	}, [updateData]);
 
 	const doDisabledCheck = () => {
 		if (
@@ -159,7 +180,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 						/>
 					</Stack>
 					<Stack className="about-me-box">
-						<Button className="update-button" onClick={updatePropertyHandler} disabled={doDisabledCheck()}>
+						<Button className="update-button" onClick={updateMemberHandler} disabled={doDisabledCheck()}>
 							<Typography>Update Profile</Typography>
 							<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13" fill="none">
 								<g clipPath="url(#clip0_7065_6985)">

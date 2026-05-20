@@ -1,5 +1,5 @@
 import React, { ChangeEvent, useEffect, useState } from 'react';
-import { Box, Button, Checkbox, CircularProgress, Stack, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import useDeviceDetect from '../../libs/hooks/useDeviceDetect';
 import withLayoutFull from '../../libs/components/layout/LayoutFull';
 import { NextPage } from 'next';
@@ -11,12 +11,12 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import WestIcon from '@mui/icons-material/West';
 import EastIcon from '@mui/icons-material/East';
-import { useMutation, useQuery, useReactiveVar } from '@apollo/client';
+import { useReactiveVar } from '@apollo/client';
 import { useRouter } from 'next/router';
 import { Property } from '../../libs/types/property/property';
 import moment from 'moment';
 import { formatterStr } from '../../libs/utils';
-import { Messages, REACT_APP_API_URL } from '../../libs/config';
+import { REACT_APP_API_URL } from '../../libs/config';
 import { userVar } from '../../apollo/store';
 import { CommentInput, CommentsInquiry } from '../../libs/types/comment/comment.input';
 import { Comment } from '../../libs/types/comment/comment';
@@ -25,14 +25,14 @@ import { Pagination as MuiPagination } from '@mui/material';
 import Link from 'next/link';
 import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { useMutation, useQuery } from '@apollo/client';
+import { T } from '../../libs/types/common';
+import { CREATE_COMMENT, LIKE_TARGET_PROPERTY } from '../../apollo/user/mutation';
+import { sweetErrorHandling, sweetMixinErrorAlert, sweetTopSmallSuccessAlert } from '../../libs/sweetAlert';
+import { Direction, Message } from '../../libs/enums/common.enum';
+import { GET_COMMENTS, GET_PROPERTIES, GET_PROPERTY } from '../../apollo/user/query';
 import 'swiper/css';
 import 'swiper/css/pagination';
-import { GET_COMMENTS, GET_PROPERTIES, GET_PROPERTY } from '../../apollo/user/query';
-import { T } from '../../libs/types/common';
-import { Direction } from '../../libs/enums/common.enum';
-import { sweetErrorHandling, sweetMixinErrorAlert, sweetTopSmallSuccessAlert } from '../../libs/sweetAlert';
-import { CREATE_COMMENT, LIKE_TARGET_PROPERTY } from '../../apollo/user/mutation';
-import { error } from 'next/dist/build/output/log';
 
 SwiperCore.use([Autoplay, Navigation, Pagination]);
 
@@ -71,12 +71,12 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 	} = useQuery(GET_PROPERTY, {
 		fetchPolicy: 'network-only',
 		variables: { input: propertyId },
-		skip: !propertyId,
+		skip: !propertyId, // propertyId null bo'lsa backenddan graphQL api requestni amalga oshirmay turish mantiqi
 		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
+		onCompleted(data: T) {
 			if (data?.getProperty) {
 				setProperty(data.getProperty);
-				setSlideImage(data.getProperty?.propertyImages[0] ?? '');
+				setSlideImage(data.getProperty?.propertyImages[0]);
 			}
 		},
 	});
@@ -88,21 +88,23 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 		refetch: getPropertiesRefetch,
 	} = useQuery(GET_PROPERTIES, {
 		fetchPolicy: 'cache-and-network',
-		variables: { input: 
-			{
+		variables: {
+			input: {
 				page: 1,
 				limit: 4,
-				sort: "createdAt",
+				sort: 'createdAt',
 				direction: Direction.DESC,
 				search: {
-					locationList: property?.propertyLocation ? [property?.propertyLocation] : []
-				}
-			}
-		 },
-		 skip: !propertyId && !property,
+					locationList: property?.propertyLocation ? [property?.propertyLocation] : [],
+				},
+			},
+		},
+		skip: !propertyId && !property,
 		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
-			if(data?.getProperties?.list)  setDestinationProperties(data?.getProperties?.list);
+		onCompleted(data: T) {
+			if (data?.getProperties?.list) {
+				setDestinationProperties(data.getProperties.list);
+			}
 		},
 	});
 
@@ -113,11 +115,12 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 		refetch: getCommentsRefetch,
 	} = useQuery(GET_COMMENTS, {
 		fetchPolicy: 'cache-and-network',
-		variables: { input: commentInquiry },
+		variables: { input: initialComment },
 		skip: !commentInquiry.search.commentRefId,
 		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
-			if (data?.getComments?.list) setPropertyComments(data?.getComments?.list);
+
+		onCompleted(data: T) {
+			if (data?.getComments?.list) setPropertyComments(data.getComments.list);
 			setCommentTotal(data?.getComments?.metaCounter[0]?.total ?? 0);
 		},
 	});
@@ -140,10 +143,9 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 	}, [router]);
 
 	useEffect(() => {
-		if(commentInquiry.search.commentRefId){
-			getCommentsRefetch({input: commentInquiry});
+		if (commentInquiry.search.commentRefId) {
+			getCommentsRefetch({ input: commentInquiry });
 		}
-		
 	}, [commentInquiry]);
 
 	/** HANDLERS **/
@@ -154,25 +156,30 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 	const likePropertyHandler = async (user: T, id: string) => {
 		try {
 			if (!id) return;
-			if (!user?._id) throw new Error(Messages.error2);
-			await likeTargetProperty({ variables: { input: id } });
-			await getPropertyRefetch({ variables: { input: id } })
-			await getPropertiesRefetch({ input: {
-				page: 1,
-				limit: 4,
-				sort: "createdAt",
-				direction: Direction.DESC,
-				search: {
-					locationList: [property?.propertyLocation]
-				}
-			} });
+			if (!user._id) throw new Error(Message.NOT_AUTHENTICATED);
+
+			await likeTargetProperty({
+				variables: { input: id },
+			});
+			await getPropertyRefetch({ input: id });
+			await getPropertiesRefetch({
+				input: {
+					page: 1,
+					limit: 4,
+					sort: 'createdAt',
+					direction: Direction.DESC,
+					search: {
+						locationList: [property?.propertyLocation],
+					},
+				},
+			});
+
 			await sweetTopSmallSuccessAlert('success', 800);
-		} catch (error: any) {
-			console.log('Error, likePropertyHandler', error.message);
-			sweetMixinErrorAlert(error.message);
+		} catch (err: any) {
+			console.log('ERROR, likePropertyHandler:', err.message);
+			sweetMixinErrorAlert(err.message).then();
 		}
 	};
-
 
 	const commentPaginationChangeHandler = async (event: ChangeEvent<unknown>, value: number) => {
 		commentInquiry.page = value;
@@ -180,22 +187,30 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 	};
 
 	const createCommentHandler = async () => {
-		try{
-			if(!user._id) throw new Error(Messages.error2)
-				await createComment({variables: {input: insertCommentData}});
-			setInsertCommentData({ ...insertCommentData, commentContent: ""}); 
-			await getCommentsRefetch({ input: commentInquiry});
+		try {
+			if (!user) throw new Error(Message.NOT_AUTHENTICATED);
+			await createComment({
+				variables: {
+					input: insertCommentData,
+				},
+			});
+
+			setInsertCommentData({ ...insertCommentData, commentContent: '' });
+
+			await getCommentsRefetch({ input: commentInquiry });
+		} catch (err: any) {
+			await sweetErrorHandling(err.message);
 		}
-		catch(err)
-		{
-			await sweetErrorHandling(err)
-		}
+	};
+
+	if (getPropertyLoading) {
+		return (
+			<Stack sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '1080px' }}>
+				<CircularProgress size="4rem" />
+			</Stack>
+		);
 	}
-	if(getPropertiesLoading) {
-		return (<Stack sx={{display: "flex", justifyContent: "center", alignItems: "center", width: "100%", height: "1080px"}}>
-			<CircularProgress size={'4rem'}/>
-		</Stack>)
-	}
+
 	if (device === 'mobile') {
 		return <div>PROPERTY DETAIL PAGE</div>;
 	} else {
@@ -273,7 +288,11 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 										</Stack>
 										<Stack className="button-box">
 											{property?.meLiked && property?.meLiked[0]?.myFavorite ? (
-												<FavoriteIcon color="primary" fontSize={'medium'} />
+												<FavoriteIcon
+													color="primary"
+													fontSize={'medium'}
+													onClick={() => likePropertyHandler(user, property?._id)}
+												/>
 											) : (
 												<FavoriteBorderIcon
 													fontSize={'medium'}
@@ -630,7 +649,11 @@ const PropertyDetail: NextPage = ({ initialComment, ...props }: any) => {
 										{destinationProperties.map((property: Property) => {
 											return (
 												<SwiperSlide className={'similar-homes-slide'} key={property.propertyTitle}>
-													<PropertyBigCard property={property} key={property?._id} likePropertyHandler={likePropertyHandler}/>
+													<PropertyBigCard
+														property={property}
+														likePropertyHandler={likePropertyHandler}
+														key={property?._id}
+													/>
 												</SwiperSlide>
 											);
 										})}
