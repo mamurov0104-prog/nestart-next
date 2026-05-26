@@ -1,3 +1,24 @@
+/**
+ * =============================================================================
+ * PROPERTY CARD (MYPAGE) — Agent ro'yxatidagi bitta uy qatori
+ * =============================================================================
+ * MyProperties ichida ishlatiladi (mypage/PropertyCard — memberPage PropertyCard dan FARQ qiladi)
+ *
+ * Ustunlar: rasm, title, manzil, narx, sana, status, views, action (edit/delete)
+ *
+ * Navigatsiya:
+ * - pushEditProperty → /mypage?category=addProperty&propertyId=...
+ * - pushPropertyDetail → faqat memberPage=true bo'lsa /property/detail
+ *
+ * REVIEW / MUAMMO:
+ * - MyProperties memberPage uzatmaydi → kartochka bosilganda detail OCHILMAYDI (faqat return)
+ * - Tuzatish: mypage dan ham detail ga o'tish: router.push('/property/detail?id=...')
+ * - Status Menu: ACTIVE → Sold; SOLD da menu yashirin
+ * - delete → parent deletePropertyHandler (soft DELETE status)
+ * - map da key yo'q (parent MyProperties da)
+ * =============================================================================
+ */
+
 import { Menu, MenuItem, Stack, Typography } from '@mui/material';
 import React, { useState } from 'react';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -13,6 +34,7 @@ import { PropertyStatus } from '../../enums/property.enum';
 interface PropertyCardProps {
 	property: Property;
 	deletePropertyHandler?: any;
+	/** true bo'lsa detail sahifaga o'tiladi (member sahifasida) */
 	memberPage?: boolean;
 	updatePropertyHandler?: any;
 }
@@ -21,10 +43,12 @@ export const PropertyCard = (props: PropertyCardProps) => {
 	const { property, deletePropertyHandler, memberPage, updatePropertyHandler } = props;
 	const device = useDeviceDetect();
 	const router = useRouter();
+
+	/** MUI Menu — statusni SOLD qilish */
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const open = Boolean(anchorEl);
 
-	/** HANDLERS **/
+	/** Tahrir formasi — AddNewProperty + propertyId query */
 	const pushEditProperty = async (id: string) => {
 		console.log('+pushEditProperty: ', id);
 		await router.push({
@@ -33,6 +57,10 @@ export const PropertyCard = (props: PropertyCardProps) => {
 		});
 	};
 
+	/**
+	 * Detail sahifa
+	 * REVIEW: memberPage false bo'lsa hech narsa qilmaydi — agent o'z uyini bosib ko'ra olmaydi
+	 */
 	const pushPropertyDetail = async (id: string) => {
 		if (memberPage)
 			await router.push({
@@ -77,6 +105,8 @@ export const PropertyCard = (props: PropertyCardProps) => {
 						</Typography>
 					</Stack>
 				</Stack>
+
+				{/* Status dropdown — SOLD emas va memberPage emas bo'lganda */}
 				{!memberPage && property.propertyStatus !== 'SOLD' && (
 					<Menu
 						anchorEl={anchorEl}
@@ -117,6 +147,8 @@ export const PropertyCard = (props: PropertyCardProps) => {
 				<Stack className="views-box">
 					<Typography className="views">{property.propertyViews.toLocaleString()}</Typography>
 				</Stack>
+
+				{/* Faqat ACTIVE — edit va delete */}
 				{!memberPage && property.propertyStatus === PropertyStatus.ACTIVE && (
 					<Stack className="action-box">
 						<IconButton className="icon-button" onClick={() => pushEditProperty(property._id)}>

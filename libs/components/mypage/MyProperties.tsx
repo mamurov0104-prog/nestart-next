@@ -1,3 +1,25 @@
+/**
+ * =============================================================================
+ * MY PROPERTIES — Agentning o'z uylari (jadval ko'rinishi)
+ * =============================================================================
+ * category=myProperties | faqat AGENT
+ *
+ * GraphQL:
+ * - GET_AGENT_PROPERTIES — backend token dan memberId oladi, status bo'yicha filter
+ * - UPDATE_PROPERTY — DELETE (soft), SOLD status
+ *
+ * Tablar:
+ * - ACTIVE (On Sale) — edit/delete action ustuni ko'rinadi
+ * - SOLD (On Sold) — action yashirin
+ *
+ * REVIEW / MUAMMOLAR:
+ * - user.memberType !== 'AGENT' → router.back() RENDER ichida — anti-pattern, useEffect ga ko'chirish kerak
+ * - PropertyCard map da key yo'q
+ * - loading/error ko'rsatilmaydi
+ * - getAgentPropertiesLoading ishlatilmaydi
+ * =============================================================================
+ */
+
 import React, { useState } from 'react';
 import { NextPage } from 'next';
 import { Pagination, Stack, Typography } from '@mui/material';
@@ -16,13 +38,14 @@ import { sweetConfirmAlert, sweetErrorHandling } from '../../sweetAlert';
 
 const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 	const device = useDeviceDetect();
+
+	/** Pagination + status filter — useQuery variables */
 	const [searchFilter, setSearchFilter] = useState<AgentPropertiesInquiry>(initialInput);
 	const [agentProperties, setAgentProperties] = useState<Property[]>([]);
 	const [total, setTotal] = useState<number>(0);
 	const user = useReactiveVar(userVar);
 	const router = useRouter();
 
-	/** APOLLO REQUESTS **/
 	const [updateProperty] = useMutation(UPDATE_PROPERTY);
 
 	const {
@@ -40,15 +63,19 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 		},
 	});
 
-	/** HANDLERS **/
 	const paginationHandler = (e: T, value: number) => {
 		setSearchFilter({ ...searchFilter, page: value });
 	};
 
+	/** Tab bosilganda — ACTIVE yoki SOLD filter */
 	const changeStatusHandler = (value: PropertyStatus) => {
 		setSearchFilter({ ...searchFilter, search: { propertyStatus: value } });
 	};
 
+	/**
+	 * Soft delete — propertyStatus: DELETE
+	 * Backend deletedAt vaqtini qo'yishi mumkin
+	 */
 	const deletePropertyHandler = async (id: string) => {
 		try {
 			if (await sweetConfirmAlert(' Are you sure to delete this property?')) {
@@ -68,6 +95,7 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 		}
 	};
 
+	/** Status o'zgartirish — masalan ACTIVE → SOLD */
 	const updatePropertyHandler = async (status: string, id: string) => {
 		try {
 			if (await sweetConfirmAlert(` Are you sure change to ${status} status?`)) {
@@ -86,6 +114,10 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 		}
 	};
 
+	/**
+	 * AGENT emas — orqaga qaytarish
+	 * REVIEW: render paytida router.back() — React qoidasiga zid; useEffect + redirect yaxshiroq
+	 */
 	if (user?.memberType !== 'AGENT') {
 		router.back();
 	}
@@ -136,6 +168,7 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 							agentProperties.map((property: Property) => {
 								return (
 									<PropertyCard
+										key={property._id}
 										property={property}
 										deletePropertyHandler={deletePropertyHandler}
 										updatePropertyHandler={updatePropertyHandler}

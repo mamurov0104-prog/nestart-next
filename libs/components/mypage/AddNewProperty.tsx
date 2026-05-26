@@ -1,3 +1,32 @@
+/**
+ * =============================================================================
+ * ADD NEW PROPERTY — Uy qo'shish / tahrirlash formasi
+ * =============================================================================
+ * category=addProperty | faqat AGENT
+ *
+ * Rejimlar:
+ * - Yangi: router.query.propertyId yo'q → CREATE_PROPERTY
+ * - Tahrir: ?propertyId=xxx → GET_PROPERTY + UPDATE_PROPERTY
+ *
+ * GraphQL:
+ * - createProperty / updateProperty (mutation)
+ * - getProperty(propertyId) — tahrir uchun ma'lumot yuklash
+ *
+ * Fayl yuklash:
+ * - imagesUploader — axios multipart, max 5 rasm, target: 'property'
+ * - GraphQL Upload spec (operations + map + 0..4 file keys)
+ *
+ * Validatsiya: doDisabledCheck — barcha maydonlar + kamida 1 rasm
+ *
+ * REVIEW / MUAMMOLAR:
+ * - GET_PROPERTY propertyId bo'lmasa ham ishga tushadi → skip: !router.query.propertyId kerak
+ * - propertyBarter === '' tekshiruvi boolean uchun noto'g'ri
+ * - AGENT emas → router.back() renderda
+ * - useEffect insertPropertyData spread — stale state
+ * - select option larda key yo'q (rooms/beds)
+ * =============================================================================
+ */
+
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Button, Stack, Typography } from '@mui/material';
@@ -27,6 +56,10 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 	const [createProperty] = useMutation(CREATE_PROPERTY);
 	const [updateProperty] = useMutation(UPDATE_PROPERTY);
 
+	/**
+	 * Tahrir rejimi — propertyId bo'lsa getProperty chaqiriladi
+	 * REVIEW: skip: !router.query.propertyId qo'shilsa yangi uy qo'shishda ortiqcha so'rov bo'lmaydi
+	 */
 	const {
 		loading: getPropertyLoading,
 		data: getPropertyData,
@@ -39,7 +72,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		},
 	});
 
-	/** LIFECYCLES **/
+	/** getProperty javobidan form state to'ldirish */
 	useEffect(() => {
 		setInsertPropertyData({
 			...insertPropertyData,
@@ -58,7 +91,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		});
 	}, [getPropertyLoading, getPropertyData]);
 
-	/** HANDLERS **/
+	/** Ko'p rasm yuklash — imagesUploader mutation (multipart) */
 	async function uploadImages() {
 		try {
 			const formData = new FormData();
@@ -111,6 +144,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		}
 	}
 
+	/** Submit tugmasi disabled — majburiy maydonlar tekshiruvi */
 	const doDisabledCheck = () => {
 		if (
 			insertPropertyData.propertyTitle === '' ||
@@ -130,6 +164,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		}
 	};
 
+	/** Yangi property yaratish — muvaffaqiyatda myProperties ga redirect */
 	const insertPropertyHandler = useCallback(async () => {
 		try {
 			const result = await createProperty({
@@ -150,6 +185,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		}
 	}, [insertPropertyData]);
 
+	/** Mavjud property yangilash — _id getProperty dan olinadi */
 	const updatePropertyHandler = useCallback(async () => {
 		try {
 			//@ts-ignore
@@ -172,6 +208,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		}
 	}, [insertPropertyData]);
 
+	/** AGENT bo'lmagan user — orqaga (REVIEW: useEffect da qilish yaxshiroq) */
 	if (user?.memberType !== 'AGENT') {
 		router.back();
 	}
@@ -495,6 +532,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 							</Stack>
 						</Stack>
 
+						{/* propertyId bor → Save (update), yo'q → Save (create) */}
 						<Stack className="buttons-row">
 							{router.query.propertyId ? (
 								<Button className="next-button" disabled={doDisabledCheck()} onClick={updatePropertyHandler}>

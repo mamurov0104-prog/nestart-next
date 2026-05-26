@@ -1,3 +1,23 @@
+/**
+ * =============================================================================
+ * MY ARTICLES — Foydalanuvchining community maqolalari
+ * =============================================================================
+ * category=myArticles
+ *
+ * GraphQL:
+ * - GET_BOARD_ARTICLES — search.memberId = user._id (faqat o'z maqolalari)
+ * - LIKE_TARGET_BOARD_ARTICLE — like toggle
+ *
+ * UI: CommunityCard (size=small)
+ *
+ * REVIEW:
+ * - searchCommunity dastlab user._id bo'sh bo'lishi mumkin (birinchi render)
+ *   → useEffect bilan user._id yangilanganda search yangilash kerak
+ * - likeBoardArticleHandler catch bo'sh — xato yutiladi
+ * - defaultProps search: {} — keyin memberId qo'shiladi
+ * =============================================================================
+ */
+
 import React, { useState } from 'react';
 import { NextPage } from 'next';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -15,6 +35,11 @@ import { sweetTopSmallSuccessAlert } from '../../sweetAlert';
 const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 	const device = useDeviceDetect();
 	const user = useReactiveVar(userVar);
+
+	/**
+	 * Filter — faqat joriy user maqolalari
+	 * Eslatma: user._id login paytida to'ldiriladi; SSR/hydration da bo'sh bo'lishi mumkin
+	 */
 	const [searchCommunity, setSearchCommunity] = useState({
 		...initialInput,
 		search: { memberId: user._id },
@@ -22,7 +47,6 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 	const [boardArticles, setBoardArticles] = useState<BoardArticle[]>([]);
 	const [totalCount, setTotalCount] = useState<number>(0);
 
-	/** APOLLO REQUESTS **/
 	const [likeTargetBoardArticle] = useMutation(LIKE_TARGET_BOARD_ARTICLE);
 
 	const {
@@ -40,11 +64,11 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 		},
 	});
 
-	/** HANDLERS **/
 	const paginationHandler = (e: T, value: number) => {
 		setSearchCommunity({ ...searchCommunity, page: value });
 	};
 
+	/** Kartochka ichidagi like — event bubbling to'xtatiladi */
 	const likeBoardArticleHandler = async (e: any, user: any, id: string) => {
 		try {
 			e.stopPropagation();
@@ -55,7 +79,9 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 			await boardArticlesRefetch({ input: searchCommunity });
 
 			await sweetTopSmallSuccessAlert('Success', 700);
-		} catch (err) {}
+		} catch (err) {
+			// REVIEW: xato log qilinmaydi — sweetErrorHandling qo'shish yaxshi
+		}
 	};
 
 	if (device === 'mobile') {
@@ -109,6 +135,7 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 		);
 };
 
+/** Boshlang'ich pagination va sort */
 MyArticles.defaultProps = {
 	initialInput: {
 		page: 1,

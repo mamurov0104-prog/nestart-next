@@ -1,3 +1,25 @@
+/**
+ * =============================================================================
+ * MY PROFILE — Profil tahriri (default bo'lim)
+ * =============================================================================
+ * category=myProfiles (default myProfile)
+ *
+ * GraphQL / HTTP:
+ * - UPDATE_MEMBER — nick, phone, address, image
+ * - imageUploader — axios + multipart GraphQL spec (Apollo emas, to'g'ridan-to'g'ri POST)
+ *
+ * JWT yangilash:
+ * - updateMember javobida accessToken keladi → updateStorage + updateUserInfo
+ * - Sabab: nick o'zgarsa JWT ichidagi ma'lumot ham yangilanishi kerak
+ *
+ * REVIEW / MUAMMOLAR:
+ * - useEffect([user]) ichida ...updateData — stale closure; faqat user dan set qilish yaxshiroq
+ * - uploadImage: updateData mutatsiya + setState — functional update ishlatish kerak
+ * - doDisabledCheck() false qaytarmaydi (undefined) — disabled noto'g'ri ishlashi mumkin
+ * - console.log productionda qolgan
+ * =============================================================================
+ */
+
 import React, { useCallback, useEffect, useState } from 'react';
 import { NextPage } from 'next';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -15,12 +37,17 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 	const device = useDeviceDetect();
 	const token = getJwtToken();
 	const user = useReactiveVar(userVar);
+
+	/** Form state — submit qilinadigan ma'lumotlar */
 	const [updateData, setUpdateData] = useState<MemberUpdate>(initialValues);
 
-	/** APOLLO REQUESTS **/
 	const [updateMember] = useMutation(UPDATE_MEMBER);
 
-	/** LIFECYCLES **/
+	/**
+	 * userVar yangilanganda formni sync qilish
+	 * REVIEW: updateData spread eski qiymatni saqlashi mumkin — to'liq almashtirish:
+	 * setUpdateData({ _id: user._id, memberNick: user.memberNick, ... })
+	 */
 	useEffect(() => {
 		setUpdateData({
 			...updateData,
@@ -31,7 +58,11 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		});
 	}, [user]);
 
-	/** HANDLERS **/
+	/**
+	 * Rasm yuklash — GraphQL multipart request
+	 * operations + map + file — graphql-upload spetsifikatsiyasi
+	 * target: 'member' → server uploads/member/ papkaga saqlaydi
+	 */
 	const uploadImage = async (e: any) => {
 		try {
 			const image = e.target.files[0];
@@ -68,6 +99,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 
 			const responseImage = response.data.data.imageUploader;
 			console.log('+responseImage: ', responseImage);
+			// REVIEW: to'g'ridan-to'g'ri mutate o'rniga: setUpdateData(prev => ({ ...prev, memberImage: responseImage }))
 			updateData.memberImage = responseImage;
 			setUpdateData({ ...updateData });
 
@@ -77,6 +109,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		}
 	};
 
+	/** Saqlash — UPDATE_MEMBER + JWT yangilash */
 	const updateMemberHandler = useCallback(async () => {
 		try {
 			if (!user._id) throw new Error(Messages.error2);
@@ -97,6 +130,10 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		}
 	}, [updateData]);
 
+	/**
+	 * Barcha majburiy maydonlar to'ldirilganini tekshirish
+	 * REVIEW: oxirida return false qo'shish kerak
+	 */
 	const doDisabledCheck = () => {
 		if (
 			updateData.memberNick === '' ||
@@ -106,6 +143,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		) {
 			return true;
 		}
+		return false;
 	};
 
 	console.log('+updateData', updateData);
@@ -122,6 +160,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 					</Stack>
 				</Stack>
 				<Stack className="top-box">
+					{/* Rasm bloki */}
 					<Stack className="photo-box">
 						<Typography className="title">Photo</Typography>
 						<Stack className="image-big-box">
@@ -150,6 +189,8 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 							</Stack>
 						</Stack>
 					</Stack>
+
+					{/* Nick va telefon */}
 					<Stack className="small-input-box">
 						<Stack className="input-box">
 							<Typography className="title">Username</Typography>
@@ -170,6 +211,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 							/>
 						</Stack>
 					</Stack>
+
 					<Stack className="address-box">
 						<Typography className="title">Address</Typography>
 						<input
@@ -179,6 +221,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 							onChange={({ target: { value } }) => setUpdateData({ ...updateData, memberAddress: value })}
 						/>
 					</Stack>
+
 					<Stack className="about-me-box">
 						<Button className="update-button" onClick={updateMemberHandler} disabled={doDisabledCheck()}>
 							<Typography>Update Profile</Typography>
