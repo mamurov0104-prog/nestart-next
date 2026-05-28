@@ -19,7 +19,6 @@ import { MemberUpdate } from '../../../libs/types/member/member.update';
 import { useMutation, useQuery } from '@apollo/client';
 import { UPDATE_MEMBER_BY_ADMIN } from '../../../apollo/admin/mutation';
 import { GET_ALL_MEMBERS_BY_ADMIN } from '../../../apollo/admin/query';
-import { T } from '../../../libs/types/common';
 
 const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 	const [anchorEl, setAnchorEl] = useState<[] | HTMLElement[]>([]);
@@ -37,35 +36,41 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 
 	const {
 		loading: getAllMembersByAdminLoading,
-		data: getAllMembersByAdminData,
 		error: getAllMembersByAdminError,
-		refetch: getAllMembersRefetch,
+		data: getAllMembersByAdminData,
+		refetch: getAllMembersByAdminRefetch,
 	} = useQuery(GET_ALL_MEMBERS_BY_ADMIN, {
 		fetchPolicy: 'network-only',
-		variables: { input: membersInquiry },
-		notifyOnNetworkStatusChange: true,
-		onCompleted(data: T) {
-			setMembers(data.getAllMembersByAdmin?.list);
-			setMembersTotal(data.getAllMembersByAdmin?.metaCounter?.[0]?.total ?? 0);
+		variables: {
+			inquiry: membersInquiry,
 		},
-	});
+		onCompleted: (data) => {
+			if (data?.getAllMembersByAdmin) {
+				setMembers(data?.getAllMembersByAdmin?.list);
+				setMembersTotal(data?.getAllMembersByAdmin?.metaCounter[0]?.total ?? 0);
+			}
+		},
+		onError: (err) => {
+			sweetErrorHandling(err).then();
+		},	
+	})
 
 	/** LIFECYCLES **/
 	useEffect(() => {
-		getAllMembersRefetch({ input: membersInquiry }).then();
+		getAllMembersByAdminRefetch({input: membersInquiry}).then();
 	}, [membersInquiry]);
 
 	/** HANDLERS **/
 	const changePageHandler = async (event: unknown, newPage: number) => {
 		membersInquiry.page = newPage + 1;
-		await getAllMembersRefetch({ input: membersInquiry });
+		await getAllMembersByAdminRefetch({input: membersInquiry});
 		setMembersInquiry({ ...membersInquiry });
 	};
 
 	const changeRowsPerPageHandler = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		membersInquiry.limit = parseInt(event.target.value, 10);
 		membersInquiry.page = 1;
-		await getAllMembersRefetch({ input: membersInquiry });
+		await getAllMembersByAdminRefetch({input: membersInquiry});
 		setMembersInquiry({ ...membersInquiry });
 	};
 
@@ -109,8 +114,9 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 					input: updateData,
 				},
 			});
+
 			menuIconCloseHandler();
-			await getAllMembersRefetch({ input: membersInquiry });
+			await getAllMembersByAdminRefetch({input: membersInquiry});
 		} catch (err: any) {
 			sweetErrorHandling(err).then();
 		}
@@ -172,28 +178,28 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 						<Box component={'div'}>
 							<List className={'tab-menu'}>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'ALL')}
+									onClick={(e) => tabChangeHandler(e, 'ALL')}
 									value="ALL"
 									className={value === 'ALL' ? 'li on' : 'li'}
 								>
 									All
 								</ListItem>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'ACTIVE')}
+									onClick={(e) => tabChangeHandler(e, 'ACTIVE')}
 									value="ACTIVE"
 									className={value === 'ACTIVE' ? 'li on' : 'li'}
 								>
 									Active
 								</ListItem>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'BLOCK')}
+									onClick={(e) => tabChangeHandler(e, 'BLOCK')}
 									value="BLOCK"
 									className={value === 'BLOCK' ? 'li on' : 'li'}
 								>
 									Blocked
 								</ListItem>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'DELETE')}
+									onClick={(e) => tabChangeHandler(e, 'DELETE')}
 									value="DELETE"
 									className={value === 'DELETE' ? 'li on' : 'li'}
 								>
@@ -225,7 +231,7 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 																text: '',
 															},
 														});
-														await getAllMembersRefetch({ input: membersInquiry });
+														await getAllMembersByAdminRefetch({input: membersInquiry});
 													}}
 												/>
 											)}

@@ -1,51 +1,26 @@
-/**
- * =============================================================================
- * MY MENU — Chap sidebar navigatsiya
- * =============================================================================
- * MyPage shell ning chap qismi. URL: /mypage?category=...
- *
- * Ma'lumot: userVar (Apollo reactive var) — login JWT dan
- *
- * Bo'limlar:
- * 1) MANAGE LISTINGS — Add/My Properties faqat AGENT; Favorites, Visited, Followers, Followings hammaga
- * 2) Community — Articles, Write Article
- * 3) MANAGE ACCOUNT — My Profile, Logout
- *
- * Navigatsiya: Next.js Link + query.category (scroll={false} — sahifa tepaga sakramasligi uchun)
- * Aktiv item: pathname/category === menu qiymati → className 'focus' + oq icon
- *
- * REVIEW / MUAMMOLAR:
- * - pathname va category bir xil narsa — bittasi yetarli
- * - PortraitIcon (qizil) — debug qoldig'i, funksiyasi yo'q
- * - sweetMixinErrorAlert import qilingan lekin ishlatilmagan
- * - ADMIN → /_admin/users yangi tabda
- * - Mobil: stub
- * =============================================================================
- */
-
 import React from 'react';
 import { useRouter } from 'next/router';
 import { Stack, Typography, Box, List, ListItem } from '@mui/material';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
 import Link from 'next/link';
-import { useReactiveVar } from '@apollo/client';
+import { useQuery, useReactiveVar } from '@apollo/client';
 import { userVar } from '../../../apollo/store';
 import PortraitIcon from '@mui/icons-material/Portrait';
 import IconButton from '@mui/material/IconButton';
 import { REACT_APP_API_URL } from '../../config';
 import { logOut } from '../../auth';
 import { sweetConfirmAlert, sweetMixinErrorAlert } from '../../sweetAlert';
+import { GET_MEMBER } from '../../../apollo/user/query';
+import { T } from '../../types/common';
 
 const MyMenu = () => {
 	const device = useDeviceDetect();
 	const router = useRouter();
-	/** Aktiv menyu itemini CSS focus uchun */
 	const pathname = router.query.category ?? 'myProfile';
-	/** Icon rangini (oq/qora) almashtirish uchun */
 	const category: any = router.query?.category ?? 'myProfile';
 	const user = useReactiveVar(userVar);
 
-	/** Logout — tasdiqdan keyin localStorage tozalanadi (logOut) */
+	/** HANDLERS **/
 	const logoutHandler = async () => {
 		try {
 			if (await sweetConfirmAlert('Do you want to logout?')) logOut();
@@ -59,7 +34,6 @@ const MyMenu = () => {
 	} else {
 		return (
 			<Stack width={'100%'} padding={'30px 24px'}>
-				{/* Yuqori: avatar, nick, telefon, memberType (AGENT/USER/ADMIN) */}
 				<Stack className={'profile'}>
 					<Box component={'div'} className={'profile-img'}>
 						<img
@@ -83,13 +57,11 @@ const MyMenu = () => {
 					</Stack>
 				</Stack>
 				<Stack className={'sections'}>
-					{/* AGENT bo'lsa 2 ta qo'shimcha link — section balandligi dinamik */}
 					<Stack className={'section'} style={{ height: user.memberType === 'AGENT' ? '228px' : '153px' }}>
 						<Typography className="title" variant={'h5'}>
 							MANAGE LISTINGS
 						</Typography>
 						<List className={'sub-section'}>
-							{/* Faqat AGENT: yangi uy + ro'yxat */}
 							{user.memberType === 'AGENT' && (
 								<>
 									<ListItem className={pathname === 'addProperty' ? 'focus' : ''}>
@@ -109,7 +81,6 @@ const MyMenu = () => {
 												<Typography className={'sub-title'} variant={'subtitle1'} component={'p'}>
 													Add Property
 												</Typography>
-												{/* REVIEW: PortraitIcon — dizayn qoldig'i, olib tashlash mumkin */}
 												<IconButton aria-label="delete" sx={{ ml: '40px' }}>
 													<PortraitIcon style={{ color: 'red' }} />
 												</IconButton>
@@ -280,7 +251,6 @@ const MyMenu = () => {
 							</ListItem>
 						</List>
 					</Stack>
-					{/* Community bo'limi — barcha userlar uchun */}
 					<Stack className={'section'} sx={{ marginTop: '10px' }}>
 						<div>
 							<Typography className="title" variant={'h5'}>
@@ -331,7 +301,6 @@ const MyMenu = () => {
 							</List>
 						</div>
 					</Stack>
-					{/* Profil va chiqish */}
 					<Stack className={'section'} sx={{ marginTop: '30px' }}>
 						<Typography className="title" variant={'h5'}>
 							MANAGE ACCOUNT

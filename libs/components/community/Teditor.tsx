@@ -3,15 +3,14 @@ import { Box, Button, FormControl, MenuItem, Stack, Typography, Select, TextFiel
 import { BoardArticleCategory } from '../../enums/board-article.enum';
 import { Editor } from '@toast-ui/react-editor';
 import { getJwtToken } from '../../auth';
-import { REACT_APP_API_URL } from '../../config';
+import { Messages, REACT_APP_API_URL } from '../../config';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { T } from '../../types/common';
+import '@toast-ui/editor/dist/toastui-editor.css';
 import { useMutation } from '@apollo/client';
 import { CREATE_BOARD_ARTICLE } from '../../../apollo/user/mutation';
-import { sweetErrorHandling, sweetTopSmallSuccessAlert } from '../../sweetAlert';
-import { Message } from '../../enums/common.enum';
-import '@toast-ui/editor/dist/toastui-editor.css';
+import { sweetErrorHandling, sweetTopSuccessAlert } from '../../sweetAlert';
 
 const TuiEditor = () => {
 	const editorRef = useRef<Editor>(null),
@@ -20,7 +19,7 @@ const TuiEditor = () => {
 	const [articleCategory, setArticleCategory] = useState<BoardArticleCategory>(BoardArticleCategory.FREE);
 
 	/** APOLLO REQUESTS **/
-	const [createBoardArticle] = useMutation(CREATE_BOARD_ARTICLE);
+	const [createboardArticle] = useMutation(CREATE_BOARD_ARTICLE);
 
 	const memoizedValues = useMemo(() => {
 		const articleTitle = '',
@@ -88,23 +87,27 @@ const TuiEditor = () => {
 			memoizedValues.articleContent = articleContent;
 
 			if (memoizedValues.articleContent === '' || memoizedValues.articleTitle === '') {
-				throw new Error(Message.INSERT_ALL_INPUTS);
+				throw new Error(Messages.error3);
 			}
 
-			await createBoardArticle({
+			await createboardArticle({
 				variables: {
-					input: { ...memoizedValues, articleCategory },
+					input: {
+						articleCategory,
+						...memoizedValues,
+					},
 				},
 			});
-
-			await sweetTopSmallSuccessAlert('Article Created Successfully!', 700);
+			await sweetTopSuccessAlert('Article is created successfully', 700);
 			await router.push({
 				pathname: '/mypage',
-				query: { category: 'myArticles' },
+				query: {
+					category: 'myArticles',
+				},
 			});
 		} catch (err: any) {
-			console.log('Error, handleRegisterButton:', err);
-			sweetErrorHandling(new Error(Message.INSERT_ALL_INPUTS)).then();
+			console.log(err);
+			sweetErrorHandling(err).then();
 		}
 	};
 

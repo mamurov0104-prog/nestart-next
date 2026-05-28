@@ -1,25 +1,3 @@
-/**
- * =============================================================================
- * MY PROPERTIES — Agentning o'z uylari (jadval ko'rinishi)
- * =============================================================================
- * category=myProperties | faqat AGENT
- *
- * GraphQL:
- * - GET_AGENT_PROPERTIES — backend token dan memberId oladi, status bo'yicha filter
- * - UPDATE_PROPERTY — DELETE (soft), SOLD status
- *
- * Tablar:
- * - ACTIVE (On Sale) — edit/delete action ustuni ko'rinadi
- * - SOLD (On Sold) — action yashirin
- *
- * REVIEW / MUAMMOLAR:
- * - user.memberType !== 'AGENT' → router.back() RENDER ichida — anti-pattern, useEffect ga ko'chirish kerak
- * - PropertyCard map da key yo'q
- * - loading/error ko'rsatilmaydi
- * - getAgentPropertiesLoading ishlatilmaydi
- * =============================================================================
- */
-
 import React, { useState } from 'react';
 import { NextPage } from 'next';
 import { Pagination, Stack, Typography } from '@mui/material';
@@ -38,14 +16,13 @@ import { sweetConfirmAlert, sweetErrorHandling } from '../../sweetAlert';
 
 const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 	const device = useDeviceDetect();
-
-	/** Pagination + status filter — useQuery variables */
 	const [searchFilter, setSearchFilter] = useState<AgentPropertiesInquiry>(initialInput);
 	const [agentProperties, setAgentProperties] = useState<Property[]>([]);
 	const [total, setTotal] = useState<number>(0);
 	const user = useReactiveVar(userVar);
 	const router = useRouter();
 
+	/** APOLLO REQUESTS **/
 	const [updateProperty] = useMutation(UPDATE_PROPERTY);
 
 	const {
@@ -53,71 +30,62 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 		data: getAgentPropertiesData,
 		error: getAgentPropertiesError,
 		refetch: getAgentPropertiesRefetch,
-	} = useQuery(GET_AGENT_PROPERTIES, {
-		fetchPolicy: 'network-only',
-		variables: { input: searchFilter },
-		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
-			setAgentProperties(data?.getAgentProperties?.list);
-			setTotal(data?.getAgentProperties?.metaCounter[0]?.total ?? 0);
-		},
-	});
+	} = useQuery(
+		GET_AGENT_PROPERTIES, {
+			fetchPolicy: 'network-only',
+			variables: {input: searchFilter},
+			notifyOnNetworkStatusChange: true,
+			onCompleted: (data: T) => {
+				setAgentProperties(data?.getAgentProperties?.list);
+				setTotal(data?.getAgentProperties?.metaCounter[0]?.total ?? 0);
+			}
+		});
 
+	/** HANDLERS **/
 	const paginationHandler = (e: T, value: number) => {
 		setSearchFilter({ ...searchFilter, page: value });
 	};
 
-	/** Tab bosilganda — ACTIVE yoki SOLD filter */
 	const changeStatusHandler = (value: PropertyStatus) => {
 		setSearchFilter({ ...searchFilter, search: { propertyStatus: value } });
 	};
 
-	/**
-	 * Soft delete — propertyStatus: DELETE
-	 * Backend deletedAt vaqtini qo'yishi mumkin
-	 */
 	const deletePropertyHandler = async (id: string) => {
-		try {
-			if (await sweetConfirmAlert(' Are you sure to delete this property?')) {
+		try{
+			if(await sweetConfirmAlert("do you wanna delete")) {
 				await updateProperty({
 					variables: {
 						input: {
 							_id: id,
-							propertyStatus: 'DELETE',
-						},
-					},
+							propertyStatus: "DELETE"
+						}
+					}
 				});
-
-				await getAgentPropertiesRefetch({ input: searchFilter });
+				await getAgentPropertiesRefetch({input: searchFilter})
 			}
-		} catch (err: any) {
+		} catch(err) {
 			await sweetErrorHandling(err);
 		}
 	};
 
-	/** Status o'zgartirish — masalan ACTIVE → SOLD */
 	const updatePropertyHandler = async (status: string, id: string) => {
-		try {
-			if (await sweetConfirmAlert(` Are you sure change to ${status} status?`)) {
+		try{
+			if(await sweetConfirmAlert(`do you wanna update to ${status}`)){
 				await updateProperty({
 					variables: {
 						input: {
 							_id: id,
-							propertyStatus: status,
-						},
-					},
-				});
-				await getAgentPropertiesRefetch({ input: searchFilter });
-			}
-		} catch (err: any) {
+							propertyStatus: status
+						}
+					}
+			})
+		    await getAgentPropertiesRefetch({input: searchFilter})
+		}
+		} catch(err) {
 			await sweetErrorHandling(err);
 		}
 	};
 
-	/**
-	 * AGENT emas — orqaga qaytarish
-	 * REVIEW: render paytida router.back() — React qoidasiga zid; useEffect + redirect yaxshiroq
-	 */
 	if (user?.memberType !== 'AGENT') {
 		router.back();
 	}
@@ -154,9 +122,7 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 							<Typography className="title-text">Date Published</Typography>
 							<Typography className="title-text">Status</Typography>
 							<Typography className="title-text">View</Typography>
-							{searchFilter.search.propertyStatus === 'ACTIVE' && (
-								<Typography className="title-text">Action</Typography>
-							)}
+							 {searchFilter.search.propertyStatus === 'ACTIVE' && <Typography className="title-text">Action</Typography>}
 						</Stack>
 
 						{agentProperties?.length === 0 ? (
@@ -168,7 +134,6 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 							agentProperties.map((property: Property) => {
 								return (
 									<PropertyCard
-										key={property._id}
 										property={property}
 										deletePropertyHandler={deletePropertyHandler}
 										updatePropertyHandler={updatePropertyHandler}

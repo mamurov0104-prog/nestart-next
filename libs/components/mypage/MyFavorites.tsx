@@ -1,29 +1,3 @@
-/**
- * =============================================================================
- * MY FAVORITES — Yoqtirilgan uylar ro'yxati
- * =============================================================================
- * category=myFavorites
- *
- * GraphQL:
- * - Query: GET_FAVORITES (OrdinaryInquiry: page, limit)
- * - Mutation: LIKE_TARGET_PROPERTY — like toggle; favoritesdan olib tashlash uchun qayta bosiladi
- *
- * UI:
- * - property/PropertyCard (homepage kartochkasi) — myFavorites={true}
- * - Pagination: 6 ta element sahifada
- *
- * Backend:
- * - getFavorites — AuthGuard, memberId token dan
- * - Like jadvalidan ACTIVE propertylar qaytariladi
- *
- * REVIEW:
- * - fetchPolicy: network-only — cache eski ro'yxatni ko'rsatmasligi uchun yaxshi
- * - map da key yo'q — React warning
- * - loading/error UI yo'q
- * - likePropertyHandler da user param kerak — PropertyCard uzatadi
- * =============================================================================
- */
-
 import React, { useState } from 'react';
 import { NextPage } from 'next';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -34,20 +8,16 @@ import { T } from '../../types/common';
 import { useMutation, useQuery } from '@apollo/client';
 import { LIKE_TARGET_PROPERTY } from '../../../apollo/user/mutation';
 import { GET_FAVORITES } from '../../../apollo/user/query';
-import { sweetErrorHandling, sweetMixinErrorAlert } from '../../sweetAlert';
 import { Messages } from '../../config';
+import { sweetMixinErrorAlert } from '../../sweetAlert';
 
 const MyFavorites: NextPage = () => {
 	const device = useDeviceDetect();
-
-	/** Serverdan kelgan ro'yxat — onCompleted da to'ldiriladi */
 	const [myFavorites, setMyFavorites] = useState<Property[]>([]);
 	const [total, setTotal] = useState<number>(0);
-
-	/** Pagination input — page o'zgarganda useQuery variables yangilanadi */
 	const [searchFavorites, setSearchFavorites] = useState<T>({ page: 1, limit: 6 });
 
-	/** APOLLO — like toggle (favoritesdan chiqarish ham shu orqali) */
+	/** APOLLO REQUESTS **/
 	const [likeTargetProperty] = useMutation(LIKE_TARGET_PROPERTY);
 
 	const {
@@ -63,36 +33,35 @@ const MyFavorites: NextPage = () => {
 		notifyOnNetworkStatusChange: true,
 		onCompleted(data: T) {
 			setMyFavorites(data.getFavorites?.list);
-			setTotal(data.getFavorites?.metaCounter?.[0]?.total || 0);
-		},
-	});
-
-	/** Sahifa raqamini o'zgartirish */
+			setTotal(data.getFavorites?.metaCounter?.[0]?.list || 0)
+		}
+	})
+	/** HANDLERS **/
 	const paginationHandler = (e: T, value: number) => {
 		setSearchFavorites({ ...searchFavorites, page: value });
 	};
 
-	/**
-	 * Yurakcha bosilganda — likeTargetProperty
-	 * Favorites sahifasida odatda like olib tashlanadi → refetch ro'yxatni yangilaydi
-	 */
 	const likePropertyHandler = async (user: any, id: string) => {
-		try {
-			if (!id) return;
-			if (!user._id) throw new Error(Messages.error2);
+		try{
 
-			await likeTargetProperty({
+		if(!id) return
+		if(!user._id) throw new Error(Messages.error2);
+
+		await likeTargetProperty(
+			{
 				variables: {
-					input: id,
-				},
-			});
-			await getFavoritesRefetch({ input: searchFavorites });
-		} catch (err: any) {
-			console.log('Error on likePropertyHandler:', err.member);
+					input: id
+				}
+			}
+		)
+		await getFavoritesRefetch({input: searchFavorites})
+		} catch(err: any) {
+			console.log('ERROR, likePropertyHandler:', err.message);
 			sweetMixinErrorAlert(err.message).then();
 		}
-	};
 
+		
+	}
 	if (device === 'mobile') {
 		return <div>NESTAR MY FAVORITES MOBILE</div>;
 	} else {
@@ -104,18 +73,10 @@ const MyFavorites: NextPage = () => {
 						<Typography className="sub-title">We are glad to see you again!</Typography>
 					</Stack>
 				</Stack>
-
 				<Stack className="favorites-list-box">
 					{myFavorites?.length ? (
 						myFavorites?.map((property: Property) => {
-							// REVIEW: key={property._id} qo'shish tavsiya etiladi
-							return (
-								<PropertyCard
-									property={property}
-									myFavorites={true}
-									likePropertyHandler={likePropertyHandler}
-								/>
-							);
+							return <PropertyCard property={property} myFavorites={true} likePropertyHandler={likePropertyHandler}/>;
 						})
 					) : (
 						<div className={'no-data'}>
@@ -124,7 +85,6 @@ const MyFavorites: NextPage = () => {
 						</div>
 					)}
 				</Stack>
-
 				{myFavorites?.length ? (
 					<Stack className="pagination-config">
 						<Stack className="pagination-box">

@@ -1,27 +1,3 @@
-/**
- * =============================================================================
- * RECENTLY VISITED — So'nggi ko'rilgan uylar
- * =============================================================================
- * category=recentlyVisited
- *
- * GraphQL:
- * - GET_VISITED (OrdinaryInquiry) — view service orqali member ko'rgan propertylar
- *
- * Farqi MyFavorites dan:
- * - Like mutation yo'q — faqat ko'rish tarixi
- * - PropertyCard: recentlyVisited={true}
- *
- * Backend:
- * - Har property detail ochilganda view yoziladi (getProperty ichida recordView)
- * - getVisited shu view yozuvlaridan ro'yxat qaytaradi
- *
- * REVIEW:
- * - Mobil matn: "MY FAVORITES MOBILE" — copy-paste xato, "RECENTLY VISITED MOBILE" bo'lishi kerak
- * - id="my-favorites-page" — CSS class nomi favorites bilan bir xil (ataylab qayta ishlatilgan bo'lishi mumkin)
- * - map da key yo'q
- * =============================================================================
- */
-
 import React, { useState } from 'react';
 import { NextPage } from 'next';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -38,29 +14,27 @@ const RecentlyVisited: NextPage = () => {
 	const [total, setTotal] = useState<number>(0);
 	const [searchVisited, setSearchVisited] = useState<T>({ page: 1, limit: 6 });
 
-	/** APOLLO — faqat o'qish (mutation yo'q) */
+	/** APOLLO REQUESTS **/
 	const {
 		loading: getVisitedLoading,
 		data: getVisitedData,
 		error: getVisitedError,
 		refetch: getVisitedRefetch,
 	} = useQuery(GET_VISITED, {
-		fetchPolicy: 'network-only',
 		variables: {
 			input: searchVisited,
 		},
 		onCompleted(data: T) {
-			setRecentlyVisited(data.getVisited?.list);
-			setTotal(data.getVisited?.metaCounter?.[0]?.total || 0);
+			setRecentlyVisited(data.getVisited?.list ?? []);
+			setTotal(data.getVisited?.metaCounter?.[0]?.total ?? 0);
 		},
 	});
-
+	/** HANDLERS **/
 	const paginationHandler = (e: T, value: number) => {
 		setSearchVisited({ ...searchVisited, page: value });
 	};
 
 	if (device === 'mobile') {
-		// REVIEW: noto'g'ri matn
 		return <div>NESTAR MY FAVORITES MOBILE</div>;
 	} else {
 		return (
@@ -74,7 +48,7 @@ const RecentlyVisited: NextPage = () => {
 				<Stack className="favorites-list-box">
 					{recentlyVisited?.length ? (
 						recentlyVisited?.map((property: Property) => {
-							return <PropertyCard property={property} recentlyVisited={true} />;
+							return <PropertyCard property={property} recentlyVisited={true} key={property?._id} />;
 						})
 					) : (
 						<div className={'no-data'}>

@@ -7,8 +7,8 @@ import MarkChatUnreadIcon from '@mui/icons-material/MarkChatUnread';
 import { useRouter } from 'next/router';
 import ScrollableFeed from 'react-scrollable-feed';
 import { RippleBadge } from '../../scss/MaterialTheme/styled';
-import { useReactiveVar } from '@apollo/client';
 import { socketVar, userVar } from '../../apollo/store';
+import { useReactiveVar } from '@apollo/client';
 import { Member } from '../types/member/member';
 import { Messages, REACT_APP_API_URL } from '../config';
 import { sweetErrorAlert } from '../sweetAlert';
@@ -36,7 +36,6 @@ const NewMessage = (type: any) => {
 		);
 	}
 };
-
 interface MessagePayload {
 	event: string;
 	text: string;
@@ -49,23 +48,23 @@ interface InfoPayload {
 	memberData: Member;
 	action: string;
 }
-
 const Chat = () => {
 	const chatContentRef = useRef<HTMLDivElement>(null);
 	const [messagesList, setMessagesList] = useState<MessagePayload[]>([]);
 	const [onlineUsers, setOnlineUsers] = useState<number>(0);
-	const [messageInput, setMessageInput] = useState<string>('');
+	const textInput = useRef(null);
+	const [message, setMessage] = useState<string>('');
 	const [open, setOpen] = useState(false);
 	const [openButton, setOpenButton] = useState(false);
 	const router = useRouter();
 	const user = useReactiveVar(userVar);
 	const socket = useReactiveVar(socketVar);
+
 	/** LIFECYCLES **/
 
 	useEffect(() => {
 		socket.onmessage = (msg) => {
 			const data = JSON.parse(msg.data);
-			console.log('Websocket message', data);
 			switch (data.event) {
 				case 'info':
 					const newInfo: InfoPayload = data;
@@ -103,9 +102,9 @@ const Chat = () => {
 	const getInputMessageHandler = useCallback(
 		(e: any) => {
 			const text = e.target.value;
-			setMessageInput(text);
+			setMessage(text);
 		},
-		[messageInput],
+		[message],
 	);
 
 	const getKeyHandler = (e: any) => {
@@ -119,10 +118,10 @@ const Chat = () => {
 	};
 
 	const onClickHandler = () => {
-		if (!messageInput) sweetErrorAlert(Messages.error4);
+		if (!message) sweetErrorAlert(Messages.error4);
 		else {
-			socket.send(JSON.stringify({ event: 'message', data: messageInput }));
-			setMessageInput('');
+			socket.send(JSON.stringify({ event: 'message', data: message }));
+			setMessage('');
 		}
 	};
 
@@ -146,12 +145,11 @@ const Chat = () => {
 							</Box>
 							{messagesList.map((ele: MessagePayload) => {
 								const { text, memberData } = ele;
-
 								const memberImage = memberData?.memberImage
-									? `${REACT_APP_API_URL}/${memberData?.memberImage}`
+									? `${REACT_APP_API_URL}/${memberData.memberImage}`
 									: '/img/profile/defaultUser.svg';
 
-								return memberData?._id === user?._id ? (
+								return (memberData?._id === user?._id ? (
 									<Box
 										component={'div'}
 										flexDirection={'row'}
@@ -167,9 +165,8 @@ const Chat = () => {
 										<Avatar alt={'jonik'} src={memberImage} />
 										<div className={'msg-left'}>{text}</div>
 									</Box>
-								);
+								));
 							})}
-
 							<></>
 						</Stack>
 					</ScrollableFeed>
@@ -178,9 +175,9 @@ const Chat = () => {
 					<input
 						type={'text'}
 						name={'message'}
-						value={messageInput}
 						className={'msg-input'}
 						placeholder={'Type message'}
+						value={message}
 						onChange={getInputMessageHandler}
 						onKeyDown={getKeyHandler}
 					/>

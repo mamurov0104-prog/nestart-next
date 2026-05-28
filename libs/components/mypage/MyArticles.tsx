@@ -1,23 +1,3 @@
-/**
- * =============================================================================
- * MY ARTICLES — Foydalanuvchining community maqolalari
- * =============================================================================
- * category=myArticles
- *
- * GraphQL:
- * - GET_BOARD_ARTICLES — search.memberId = user._id (faqat o'z maqolalari)
- * - LIKE_TARGET_BOARD_ARTICLE — like toggle
- *
- * UI: CommunityCard (size=small)
- *
- * REVIEW:
- * - searchCommunity dastlab user._id bo'sh bo'lishi mumkin (birinchi render)
- *   → useEffect bilan user._id yangilanganda search yangilash kerak
- * - likeBoardArticleHandler catch bo'sh — xato yutiladi
- * - defaultProps search: {} — keyin memberId qo'shiladi
- * =============================================================================
- */
-
 import React, { useState } from 'react';
 import { NextPage } from 'next';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -27,19 +7,14 @@ import { useMutation, useQuery, useReactiveVar } from '@apollo/client';
 import { userVar } from '../../../apollo/store';
 import { T } from '../../types/common';
 import { BoardArticle } from '../../types/board-article/board-article';
-import { LIKE_TARGET_BOARD_ARTICLE } from '../../../apollo/user/mutation';
 import { GET_BOARD_ARTICLES } from '../../../apollo/user/query';
 import { Messages } from '../../config';
-import { sweetTopSmallSuccessAlert } from '../../sweetAlert';
+import { LIKE_TARGET_BOARD_ARTICLE } from '../../../apollo/user/mutation';
+import { sweetMixinErrorAlert, sweetTopSmallSuccessAlert } from '../../sweetAlert';
 
 const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 	const device = useDeviceDetect();
 	const user = useReactiveVar(userVar);
-
-	/**
-	 * Filter — faqat joriy user maqolalari
-	 * Eslatma: user._id login paytida to'ldiriladi; SSR/hydration da bo'sh bo'lishi mumkin
-	 */
 	const [searchCommunity, setSearchCommunity] = useState({
 		...initialInput,
 		search: { memberId: user._id },
@@ -47,6 +22,7 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 	const [boardArticles, setBoardArticles] = useState<BoardArticle[]>([]);
 	const [totalCount, setTotalCount] = useState<number>(0);
 
+	/** APOLLO REQUESTS **/
 	const [likeTargetBoardArticle] = useMutation(LIKE_TARGET_BOARD_ARTICLE);
 
 	const {
@@ -56,31 +32,36 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 		refetch: boardArticlesRefetch,
 	} = useQuery(GET_BOARD_ARTICLES, {
 		fetchPolicy: 'network-only',
-		variables: { input: searchCommunity },
-		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
-			setBoardArticles(data?.getBoardArticles?.list);
-			setTotalCount(data?.getBoardArticles?.metaCounter[0]?.total);
+		variables: {
+			input: searchCommunity
 		},
-	});
-
+		notifyOnNetworkStatusChange: true,
+		onCompleted(data: T)  {
+			setBoardArticles(data?.getBoardArticles?.list);
+			setTotalCount(data?.getBoardArticles?.metaCounter?.[0]?.total)
+		} 
+	})
+	/** HANDLERS **/
 	const paginationHandler = (e: T, value: number) => {
 		setSearchCommunity({ ...searchCommunity, page: value });
 	};
 
-	/** Kartochka ichidagi like — event bubbling to'xtatiladi */
-	const likeBoardArticleHandler = async (e: any, user: any, id: string) => {
+	const likeArticleHandler = async (e: any, user: any, id: string) => {
 		try {
 			e.stopPropagation();
 			if (!id) return;
-			if (!user?._id) throw new Error(Messages.error2);
+			if (!user._id) throw new Error(Messages.error2);
 
-			await likeTargetBoardArticle({ variables: { input: id } });
+			await likeTargetBoardArticle({
+				variables: {
+					input: id,
+				},
+			});
 			await boardArticlesRefetch({ input: searchCommunity });
-
-			await sweetTopSmallSuccessAlert('Success', 700);
-		} catch (err) {
-			// REVIEW: xato log qilinmaydi — sweetErrorHandling qo'shish yaxshi
+			await sweetTopSmallSuccessAlert('success', 800);
+		} catch (err: any) {
+			console.log('ERROR, likePropertyHandler:', err.message);
+			sweetMixinErrorAlert(err.message).then();
 		}
 	};
 
@@ -98,14 +79,7 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 				<Stack className="article-list-box">
 					{boardArticles?.length > 0 ? (
 						boardArticles?.map((boardArticle: BoardArticle) => {
-							return (
-								<CommunityCard
-									boardArticle={boardArticle}
-									key={boardArticle?._id}
-									size={'small'}
-									likeArticleHandler={likeBoardArticleHandler}
-								/>
-							);
+							return <CommunityCard boardArticle={boardArticle} key={boardArticle?._id} size={'small'} likeArticleHandler={likeArticleHandler} />;
 						})
 					) : (
 						<div className={'no-data'}>
@@ -135,7 +109,6 @@ const MyArticles: NextPage = ({ initialInput, ...props }: T) => {
 		);
 };
 
-/** Boshlang'ich pagination va sort */
 MyArticles.defaultProps = {
 	initialInput: {
 		page: 1,

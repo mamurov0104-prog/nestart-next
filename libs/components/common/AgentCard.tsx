@@ -12,11 +12,11 @@ import { userVar } from '../../../apollo/store';
 
 interface AgentCardProps {
 	agent: any;
-	likeMemberHandler: any;
+	likeAgentHandler?: (user: any, id: string) => Promise<void> | void;
 }
 
 const AgentCard = (props: AgentCardProps) => {
-	const { agent, likeMemberHandler } = props;
+	const { agent, likeAgentHandler } = props;
 	const device = useDeviceDetect();
 	const user = useReactiveVar(userVar);
 	const imagePath: string = agent?.memberImage
@@ -53,7 +53,7 @@ const AgentCard = (props: AgentCardProps) => {
 						<Link
 							href={{
 								pathname: '/agent/detail',
-								query: { agentId: 'id' },
+								query: { agentId: agent?._id },
 							}}
 						>
 							<strong>{agent?.memberFullName ?? agent?.memberNick}</strong>
@@ -65,7 +65,7 @@ const AgentCard = (props: AgentCardProps) => {
 							<RemoveRedEyeIcon />
 						</IconButton>
 						<Typography className="view-cnt">{agent?.memberViews}</Typography>
-						<IconButton color={'default'} onClick={() => likeMemberHandler(user, agent?._id)}>
+						<IconButton color={'default'} onClick={() => likeAgentHandler && likeAgentHandler(user, agent?._id)}>
 							{agent?.meLiked && agent?.meLiked[0]?.myFavorite ? (
 								<FavoriteIcon color={'primary'} />
 							) : (

@@ -1,14 +1,3 @@
-/**
- * =============================================================================
- * ARTICLE — Statik mock kartochka (ISHLATILMAYDI)
- * =============================================================================
- * REVIEW:
- * - Loyihada import qilinmaydi — dead code / dizayn prototipi
- * - Haqiqiy maqolalar: MyArticles + CommunityCard
- * - Kelajakda o'chirish yoki MyArticles ga integratsiya qilish mumkin
- * =============================================================================
- */
-
 import React from 'react';
 import { Stack, Typography, Box } from '@mui/material';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -21,7 +10,6 @@ const Article = () => {
 	} else {
 		return (
 			<Stack className="card-config">
-				{/* Statik rasm — API dan kelmaydi */}
 				<Stack className="top">
 					<img src="/img/apartmentMain.png" alt="" />
 					<Box component={'div'} className={'date'}>

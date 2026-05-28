@@ -1,25 +1,3 @@
-/**
- * =============================================================================
- * MY PROFILE — Profil tahriri (default bo'lim)
- * =============================================================================
- * category=myProfiles (default myProfile)
- *
- * GraphQL / HTTP:
- * - UPDATE_MEMBER — nick, phone, address, image
- * - imageUploader — axios + multipart GraphQL spec (Apollo emas, to'g'ridan-to'g'ri POST)
- *
- * JWT yangilash:
- * - updateMember javobida accessToken keladi → updateStorage + updateUserInfo
- * - Sabab: nick o'zgarsa JWT ichidagi ma'lumot ham yangilanishi kerak
- *
- * REVIEW / MUAMMOLAR:
- * - useEffect([user]) ichida ...updateData — stale closure; faqat user dan set qilish yaxshiroq
- * - uploadImage: updateData mutatsiya + setState — functional update ishlatish kerak
- * - doDisabledCheck() false qaytarmaydi (undefined) — disabled noto'g'ri ishlashi mumkin
- * - console.log productionda qolgan
- * =============================================================================
- */
-
 import React, { useCallback, useEffect, useState } from 'react';
 import { NextPage } from 'next';
 import useDeviceDetect from '../../hooks/useDeviceDetect';
@@ -37,17 +15,13 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 	const device = useDeviceDetect();
 	const token = getJwtToken();
 	const user = useReactiveVar(userVar);
-
-	/** Form state — submit qilinadigan ma'lumotlar */
 	const [updateData, setUpdateData] = useState<MemberUpdate>(initialValues);
+
+	/** APOLLO REQUESTS **/
 
 	const [updateMember] = useMutation(UPDATE_MEMBER);
 
-	/**
-	 * userVar yangilanganda formni sync qilish
-	 * REVIEW: updateData spread eski qiymatni saqlashi mumkin — to'liq almashtirish:
-	 * setUpdateData({ _id: user._id, memberNick: user.memberNick, ... })
-	 */
+	/** LIFECYCLES **/
 	useEffect(() => {
 		setUpdateData({
 			...updateData,
@@ -58,11 +32,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		});
 	}, [user]);
 
-	/**
-	 * Rasm yuklash — GraphQL multipart request
-	 * operations + map + file — graphql-upload spetsifikatsiyasi
-	 * target: 'member' → server uploads/member/ papkaga saqlaydi
-	 */
+	/** HANDLERS **/
 	const uploadImage = async (e: any) => {
 		try {
 			const image = e.target.files[0];
@@ -99,7 +69,6 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 
 			const responseImage = response.data.data.imageUploader;
 			console.log('+responseImage: ', responseImage);
-			// REVIEW: to'g'ridan-to'g'ri mutate o'rniga: setUpdateData(prev => ({ ...prev, memberImage: responseImage }))
 			updateData.memberImage = responseImage;
 			setUpdateData({ ...updateData });
 
@@ -109,31 +78,26 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		}
 	};
 
-	/** Saqlash — UPDATE_MEMBER + JWT yangilash */
-	const updateMemberHandler = useCallback(async () => {
-		try {
-			if (!user._id) throw new Error(Messages.error2);
+	const updatePropertyHandler = useCallback(async () => {
+		try{
+			if(!user._id) throw new Error(Messages.error2)
 			updateData._id = user._id;
 			const result = await updateMember({
 				variables: {
 					input: updateData,
-				},
-			});
-
-			//@ts-ignore
+				}
+			})
+				
 			const jwtToken = result.data.updateMember?.accessToken;
-			await updateStorage({ jwtToken });
-			updateUserInfo(result.data.updateMember?.accessToken);
-			await sweetMixinSuccessAlert('Information update successfully');
-		} catch (err: any) {
+			await updateStorage({jwtToken});
+			updateUserInfo(result.data.updateMember.accessToken);
+			await sweetMixinSuccessAlert('your info successfully updated!');
+		}catch(err) {
 			sweetErrorHandling(err).then();
 		}
+
 	}, [updateData]);
 
-	/**
-	 * Barcha majburiy maydonlar to'ldirilganini tekshirish
-	 * REVIEW: oxirida return false qo'shish kerak
-	 */
 	const doDisabledCheck = () => {
 		if (
 			updateData.memberNick === '' ||
@@ -143,10 +107,7 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 		) {
 			return true;
 		}
-		return false;
 	};
-
-	console.log('+updateData', updateData);
 
 	if (device === 'mobile') {
 		return <>MY PROFILE PAGE MOBILE</>;
@@ -160,7 +121,6 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 					</Stack>
 				</Stack>
 				<Stack className="top-box">
-					{/* Rasm bloki */}
 					<Stack className="photo-box">
 						<Typography className="title">Photo</Typography>
 						<Stack className="image-big-box">
@@ -189,8 +149,6 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 							</Stack>
 						</Stack>
 					</Stack>
-
-					{/* Nick va telefon */}
 					<Stack className="small-input-box">
 						<Stack className="input-box">
 							<Typography className="title">Username</Typography>
@@ -211,7 +169,6 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 							/>
 						</Stack>
 					</Stack>
-
 					<Stack className="address-box">
 						<Typography className="title">Address</Typography>
 						<input
@@ -221,9 +178,8 @@ const MyProfile: NextPage = ({ initialValues, ...props }: any) => {
 							onChange={({ target: { value } }) => setUpdateData({ ...updateData, memberAddress: value })}
 						/>
 					</Stack>
-
 					<Stack className="about-me-box">
-						<Button className="update-button" onClick={updateMemberHandler} disabled={doDisabledCheck()}>
+						<Button className="update-button" onClick={updatePropertyHandler} disabled={doDisabledCheck()}>
 							<Typography>Update Profile</Typography>
 							<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13" fill="none">
 								<g clipPath="url(#clip0_7065_6985)">

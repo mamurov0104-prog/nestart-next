@@ -11,10 +11,10 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { Member } from '../../libs/types/member/member';
 import { LIKE_TARGET_MEMBER } from '../../apollo/user/mutation';
 import { useMutation, useQuery } from '@apollo/client';
-import { GET_AGENTS } from '../../apollo/user/query';
-import { sweetMixinErrorAlert, sweetTopSmallSuccessAlert } from '../../libs/sweetAlert';
-import { Messages } from '../../libs/config';
+import { GET_AGENTS, GET_PROPERTIES } from '../../apollo/user/query';
 import { T } from '../../libs/types/common';
+import { Messages } from '../../libs/config';
+import { sweetMixinErrorAlert, sweetTopSmallSuccessAlert } from '../../libs/sweetAlert';
 
 export const getStaticProps = async ({ locale }: any) => ({
 	props: {
@@ -39,7 +39,7 @@ const AgentList: NextPage = ({ initialInput, ...props }: any) => {
 
 	/** APOLLO REQUESTS **/
 	const [likeTargetMember] = useMutation(LIKE_TARGET_MEMBER);
-
+	
 	const {
 		loading: getAgentsLoading,
 		data: getAgentsData,
@@ -47,16 +47,13 @@ const AgentList: NextPage = ({ initialInput, ...props }: any) => {
 		refetch: getAgentsRefetch,
 	} = useQuery(GET_AGENTS, {
 		fetchPolicy: 'network-only',
-		variables: {
-			input: searchFilter,
-		},
+		variables: { input: searchFilter },
 		notifyOnNetworkStatusChange: true,
 		onCompleted: (data: T) => {
 			setAgents(data?.getAgents?.list);
 			setTotal(data?.getAgents?.metaCounter[0]?.total);
 		},
 	});
-
 	/** LIFECYCLES **/
 	useEffect(() => {
 		if (router.query.input) {
@@ -69,6 +66,19 @@ const AgentList: NextPage = ({ initialInput, ...props }: any) => {
 	}, [router]);
 
 	/** HANDLERS **/
+
+	const likeMemberHandler = async (user: T, id: string) => {
+		try {
+			if (!id) return;
+			if (!user?._id) throw new Error(Messages.error2);
+			await likeTargetMember({ variables: { input: id } });
+			await getAgentsRefetch({ input: searchFilter });
+			await sweetTopSmallSuccessAlert('success', 800);
+		} catch (error: any) {
+			console.log('Error, likePropertyHandler', error.message);
+			sweetMixinErrorAlert(error.message);
+		}
+	};
 	const sortingClickHandler = (e: MouseEvent<HTMLElement>) => {
 		setAnchorEl(e.currentTarget);
 		setSortingOpen(true);
@@ -108,23 +118,6 @@ const AgentList: NextPage = ({ initialInput, ...props }: any) => {
 			scroll: false,
 		});
 		setCurrentPage(value);
-	};
-
-	const likeMemberHandler = async (user: any, id: string) => {
-		try {
-			if (!id) return;  // aynan qaysi agentga like bosilayotgani
-			if (!user._id) throw new Error(Messages.error2); // like bosayotgan member authenticate bo'lganmi tekshirilyapti
-
-			await likeTargetMember({
-				variables: { input: id },
-			});
-
-			await getAgentsRefetch({ input: searchFilter });
-			await sweetTopSmallSuccessAlert('succes', 800); // oxirgi qiymatni qabul qilish
-		} catch (err: any) {
-			console.log('ERROR, likeMemberHandler', err.message);
-			sweetMixinErrorAlert(err.message);
-		}
 	};
 
 	if (device === 'mobile') {
@@ -181,7 +174,7 @@ const AgentList: NextPage = ({ initialInput, ...props }: any) => {
 							</div>
 						) : (
 							agents.map((agent: Member) => {
-								return <AgentCard agent={agent} key={agent._id} likeMemberHandler={likeMemberHandler} />;
+								return <AgentCard agent={agent} key={agent._id} likeAgentHandler={likeMemberHandler} />;
 							})
 						)}
 					</Stack>

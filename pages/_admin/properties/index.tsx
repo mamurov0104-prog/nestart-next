@@ -44,7 +44,7 @@ const AdminProperties: NextPage = ({ initialInquiry, ...props }: any) => {
 		notifyOnNetworkStatusChange: true,
 		onCompleted: (data: T) => {
 			setProperties(data?.getAllPropertiesByAdmin?.list);
-			setPropertiesTotal(data?.getAllPropertiesByAdmin?.metaCounter[0]?.total ?? 0);
+			setPropertiesTotal(data?.getAllPropertiesByAdmin?.metaCounter?.[0]?.total ?? 0);
 		},
 	});
 
@@ -107,7 +107,6 @@ const AdminProperties: NextPage = ({ initialInquiry, ...props }: any) => {
 						input: id,
 					},
 				});
-
 				await getAllPropertiesByAdminRefetch({ input: propertiesInquiry });
 			}
 			menuIconCloseHandler();
@@ -147,7 +146,6 @@ const AdminProperties: NextPage = ({ initialInquiry, ...props }: any) => {
 					input: updateData,
 				},
 			});
-
 			menuIconCloseHandler();
 			await getAllPropertiesByAdminRefetch({ input: propertiesInquiry });
 		} catch (err: any) {
@@ -167,28 +165,28 @@ const AdminProperties: NextPage = ({ initialInquiry, ...props }: any) => {
 						<Box component={'div'}>
 							<List className={'tab-menu'}>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'ALL')}
+									onClick={(e) => tabChangeHandler(e, 'ALL')}
 									value="ALL"
 									className={value === 'ALL' ? 'li on' : 'li'}
 								>
 									All
 								</ListItem>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'ACTIVE')}
+									onClick={(e) => tabChangeHandler(e, 'ACTIVE')}
 									value="ACTIVE"
 									className={value === 'ACTIVE' ? 'li on' : 'li'}
 								>
 									Active
 								</ListItem>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'SOLD')}
+									onClick={(e) => tabChangeHandler(e, 'SOLD')}
 									value="SOLD"
 									className={value === 'SOLD' ? 'li on' : 'li'}
 								>
 									Sold
 								</ListItem>
 								<ListItem
-									onClick={(e: T) => tabChangeHandler(e, 'DELETE')}
+									onClick={(e) => tabChangeHandler(e, 'DELETE')}
 									value="DELETE"
 									className={value === 'DELETE' ? 'li on' : 'li'}
 								>

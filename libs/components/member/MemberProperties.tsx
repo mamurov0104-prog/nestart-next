@@ -19,6 +19,7 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 	const [total, setTotal] = useState<number>(0);
 
 	/** APOLLO REQUESTS **/
+
 	const {
 		loading: getPropertiesLoading,
 		data: getPropertiesData,
@@ -26,15 +27,14 @@ const MyProperties: NextPage = ({ initialInput, ...props }: any) => {
 		refetch: getPropertiesRefetch,
 	} = useQuery(GET_PROPERTIES, {
 		fetchPolicy: 'network-only',
-		variables: { input: searchFilter },
-		skip: !searchFilter?.search?.memberId,
+		variables: {input: searchFilter},
+		skip: !searchFilter?.search.memberId,
 		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
-			setAgentProperties(data?.getProperties?.list);
-			setTotal(data?.getProperties?.metaCounter[0]?.total ?? 0);
-		},
-	});
-
+		onCompleted: (data: any) => {
+			setAgentProperties(data?.getProperties?.list),
+			setTotal(data?.getProperties?.metaCounter?.[0].total ?? 0)
+		}
+	})
 	/** LIFECYCLES **/
 	useEffect(() => {
 		getPropertiesRefetch().then();

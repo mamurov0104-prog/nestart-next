@@ -23,21 +23,23 @@ const MemberMenu = (props: MemberMenuProps) => {
 	const { memberId } = router.query;
 
 	/** APOLLO REQUESTS **/
-	const {
-		loading: getMemberLoading,
-		data: getMemberData,
-		error: getMemberError,
-		refetch: getMemberRefetch,
-	} = useQuery(GET_MEMBER, {
-		fetchPolicy: 'network-only',
-		variables: { input: memberId },
-		skip: !memberId,
-		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
-			setMember(data?.getMember);
-		},
-	});
 
+
+	const {
+	loading: getMemberLoading,
+	data: getMemberData,
+	error: getMemberError,
+	refetch: getMemberRefetch,
+	} = useQuery(GET_MEMBER, {
+	fetchPolicy: 'network-only',
+	variables: { input: memberId },
+	skip: !memberId,
+	notifyOnNetworkStatusChange: true,
+	onCompleted: (data: T) => {
+		setMember(data.getMember);
+	},
+	});
+	
 	if (device === 'mobile') {
 		return <div>MEMBER MENU MOBILE</div>;
 	} else {

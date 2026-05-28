@@ -1,32 +1,3 @@
-/**
- * =============================================================================
- * ADD NEW PROPERTY — Uy qo'shish / tahrirlash formasi
- * =============================================================================
- * category=addProperty | faqat AGENT
- *
- * Rejimlar:
- * - Yangi: router.query.propertyId yo'q → CREATE_PROPERTY
- * - Tahrir: ?propertyId=xxx → GET_PROPERTY + UPDATE_PROPERTY
- *
- * GraphQL:
- * - createProperty / updateProperty (mutation)
- * - getProperty(propertyId) — tahrir uchun ma'lumot yuklash
- *
- * Fayl yuklash:
- * - imagesUploader — axios multipart, max 5 rasm, target: 'property'
- * - GraphQL Upload spec (operations + map + 0..4 file keys)
- *
- * Validatsiya: doDisabledCheck — barcha maydonlar + kamida 1 rasm
- *
- * REVIEW / MUAMMOLAR:
- * - GET_PROPERTY propertyId bo'lmasa ham ishga tushadi → skip: !router.query.propertyId kerak
- * - propertyBarter === '' tekshiruvi boolean uchun noto'g'ri
- * - AGENT emas → router.back() renderda
- * - useEffect insertPropertyData spread — stale state
- * - select option larda key yo'q (rooms/beds)
- * =============================================================================
- */
-
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Button, Stack, Typography } from '@mui/material';
@@ -41,6 +12,7 @@ import { useMutation, useQuery, useReactiveVar } from '@apollo/client';
 import { userVar } from '../../../apollo/store';
 import { CREATE_PROPERTY, UPDATE_PROPERTY } from '../../../apollo/user/mutation';
 import { GET_PROPERTY } from '../../../apollo/user/query';
+import { Category } from '@mui/icons-material';
 
 const AddProperty = ({ initialValues, ...props }: any) => {
 	const device = useDeviceDetect();
@@ -53,13 +25,10 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 	const user = useReactiveVar(userVar);
 
 	/** APOLLO REQUESTS **/
+
 	const [createProperty] = useMutation(CREATE_PROPERTY);
 	const [updateProperty] = useMutation(UPDATE_PROPERTY);
 
-	/**
-	 * Tahrir rejimi — propertyId bo'lsa getProperty chaqiriladi
-	 * REVIEW: skip: !router.query.propertyId qo'shilsa yangi uy qo'shishda ortiqcha so'rov bo'lmaydi
-	 */
 	const {
 		loading: getPropertyLoading,
 		data: getPropertyData,
@@ -71,13 +40,12 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 			input: router.query.propertyId,
 		},
 	});
-
-	/** getProperty javobidan form state to'ldirish */
+	/** LIFECYCLES **/
 	useEffect(() => {
 		setInsertPropertyData({
 			...insertPropertyData,
 			propertyTitle: getPropertyData?.getProperty ? getPropertyData?.getProperty?.propertyTitle : '',
-			propertyPrice: getPropertyData?.getProperty ? getPropertyData?.getProperty?.propertyPrice : 0,
+			propertyPrice: getPropertyData?.getProperty ? getPropertyData?.getProperty?.propertyPrice : '',
 			propertyType: getPropertyData?.getProperty ? getPropertyData?.getProperty?.propertyType : '',
 			propertyLocation: getPropertyData?.getProperty ? getPropertyData?.getProperty?.propertyLocation : '',
 			propertyAddress: getPropertyData?.getProperty ? getPropertyData?.getProperty?.propertyAddress : '',
@@ -91,7 +59,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		});
 	}, [getPropertyLoading, getPropertyData]);
 
-	/** Ko'p rasm yuklash — imagesUploader mutation (multipart) */
+	/** HANDLERS **/
 	async function uploadImages() {
 		try {
 			const formData = new FormData();
@@ -144,11 +112,10 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		}
 	}
 
-	/** Submit tugmasi disabled — majburiy maydonlar tekshiruvi */
 	const doDisabledCheck = () => {
 		if (
-			insertPropertyData.propertyTitle === '' ||
-			insertPropertyData.propertyPrice === 0 || // @ts-ignore
+			insertPropertyData.propertyTitle === '' || // @ts-ignore
+			insertPropertyData.propertyPrice === 0 || insertPropertyData.propertyPrice === '' || // @ts-ignore
 			insertPropertyData.propertyType === '' || // @ts-ignore
 			insertPropertyData.propertyLocation === '' || // @ts-ignore
 			insertPropertyData.propertyAddress === '' || // @ts-ignore
@@ -164,7 +131,6 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 		}
 	};
 
-	/** Yangi property yaratish — muvaffaqiyatda myProperties ga redirect */
 	const insertPropertyHandler = useCallback(async () => {
 		try {
 			const result = await createProperty({
@@ -173,22 +139,21 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 				},
 			});
 
-			await sweetMixinSuccessAlert('This property has been created successfully.');
+			await sweetMixinSuccessAlert('Property created');
 			await router.push({
 				pathname: '/mypage',
 				query: {
 					category: 'myProperties',
 				},
 			});
-		} catch (err: any) {
-			sweetErrorHandling(err).then();
+		} catch (err) {
+			sweetErrorHandling(err);
 		}
 	}, [insertPropertyData]);
 
-	/** Mavjud property yangilash — _id getProperty dan olinadi */
 	const updatePropertyHandler = useCallback(async () => {
 		try {
-			//@ts-ignore
+			// @ts-ignore
 			insertPropertyData._id = getPropertyData?.getProperty?._id;
 			const result = await updateProperty({
 				variables: {
@@ -196,19 +161,18 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 				},
 			});
 
-			await sweetMixinSuccessAlert('This property has been update successfully.');
+			await sweetMixinSuccessAlert('Property was updated by agent');
 			await router.push({
 				pathname: '/mypage',
 				query: {
 					category: 'myProperties',
 				},
 			});
-		} catch (err: any) {
-			sweetErrorHandling(err).then();
+		} catch (err) {
+			sweetErrorHandling(err);
 		}
 	}, [insertPropertyData]);
 
-	/** AGENT bo'lmagan user — orqaga (REVIEW: useEffect da qilish yaxshiroq) */
 	if (user?.memberType !== 'AGENT') {
 		router.back();
 	}
@@ -249,8 +213,8 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 										className="description-input"
 										placeholder={'Price'}
 										value={insertPropertyData.propertyPrice}
-										onChange={({ target: { value } }) =>
-											setInsertPropertyData({ ...insertPropertyData, propertyPrice: parseInt(value) })
+										onChange={({ target: { value } }) => // @ts-ignore
+											setInsertPropertyData({ ...insertPropertyData, propertyPrice: value === '' ? '' : Number(value) })
 										}
 									/>
 								</Stack>
@@ -532,7 +496,6 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 							</Stack>
 						</Stack>
 
-						{/* propertyId bor → Save (update), yo'q → Save (create) */}
 						<Stack className="buttons-row">
 							{router.query.propertyId ? (
 								<Button className="next-button" disabled={doDisabledCheck()} onClick={updatePropertyHandler}>
@@ -554,7 +517,7 @@ const AddProperty = ({ initialValues, ...props }: any) => {
 AddProperty.defaultProps = {
 	initialValues: {
 		propertyTitle: '',
-		propertyPrice: 0,
+		propertyPrice: '',
 		propertyType: '',
 		propertyLocation: '',
 		propertyAddress: '',
