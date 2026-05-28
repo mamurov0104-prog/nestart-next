@@ -1,13 +1,17 @@
+/**
+ * Apollo Client + Chat WebSocket
+ * - GraphQL: HTTP (query/mutation) — loyihada subscription ishlatilmaydi
+ * - Chat: alohida native WebSocket (socketVar orqali Chat.tsx ga ulanadi)
+ */
 import { useMemo } from 'react';
-import { ApolloClient, ApolloLink, InMemoryCache, split, from, NormalizedCacheObject } from '@apollo/client';
+import { ApolloClient, ApolloLink, InMemoryCache, from, NormalizedCacheObject } from '@apollo/client';
 import createUploadLink from 'apollo-upload-client/public/createUploadLink.js';
-import { WebSocketLink } from '@apollo/client/link/ws';
-import { getMainDefinition } from '@apollo/client/utilities';
 import { onError } from '@apollo/client/link/error';
 import { getJwtToken } from '../libs/auth';
 import { TokenRefreshLink } from 'apollo-link-token-refresh';
 import { sweetErrorAlert } from '../libs/sweetAlert';
 import { socketVar } from './store';
+
 let apolloClient: ApolloClient<NormalizedCacheObject>;
 
 function getHeaders() {
@@ -20,99 +24,89 @@ function getHeaders() {
 
 const tokenRefreshLink = new TokenRefreshLink({
 	accessTokenField: 'accessToken',
-	isTokenValidOrUndefined: () => {
-		return true;
-	}, // @ts-ignore
-	fetchAccessToken: () => {
-		// execute refresh token
-		return null;
-	},
+	isTokenValidOrUndefined: () => true,
+	// @ts-ignore
+	fetchAccessToken: () => null,
 });
 
-function createIsomorphicLink() {
-	if (typeof window !== 'undefined') {
-		const authLink = new ApolloLink((operation, forward) => {
-			operation.setContext(({ headers = {} }) => ({
-				headers: {
-					...headers,
-					...getHeaders(),
-				},
-			}));
-			console.warn('requesting.. ', operation);
-			return forward(operation);
-		});
+/** Chat uchun WebSocket URL (token query param orqali backend auth qiladi) */
+function getChatWebSocketUrl(): string {
+	const wsBase = process.env.REACT_APP_API_WS || 'ws://127.0.0.1:3007';
+	const token = getJwtToken();
+	if (!token) return wsBase;
+	return `${wsBase}?token=${encodeURIComponent(token)}`;
+}
 
-		// @ts-ignore
-		const link = new createUploadLink({
-			uri: process.env.REACT_APP_API_GRAPHQL_URL,
-		});
+/**
+ * Live chat socket — Apollo subscription emas, to'g'ridan-to'g'ri Nest SocketGateway ga ulanadi.
+ * MUHIM: oldingi kodda socket faqat GraphQL subscription paytida ochilardi;
+ * loyihada subscription yo'q → chat hech qachon ulanmas edi.
+ */
+export function initChatWebSocket(forceReconnect = false) {
+	if (typeof window === 'undefined') return;
 
-		class LoggingWebSocket {
-			private socket: WebSocket;
-
-			constructor(url: string) {
-				this.socket = new WebSocket(`${url}?token=z${getJwtToken()}`);
-				socketVar(this.socket);
-
-				this.socket.onopen = () => {
-					console.log('WebSocket Connection!');
-				};
-
-				this.socket.onmessage = (msg) => {
-					console.log('WebSocket message:', msg.data);
-				};
-
-				this.socket.onerror = (error) => {
-					console.log('WebSocket error:', error);
-				};
-			}
-
-			send(data: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
-				this.socket.send(data);
-			}
-
-			close() {
-				this.socket.close();
-			}
-		}
-
-		/* WEBSOCKET SUBSCRIPTION LINK */
-		const wsLink = new WebSocketLink({
-			uri: process.env.REACT_APP_API_WS ?? 'ws://127.0.0.1:3007',
-			options: {
-				reconnect: false,
-				timeout: 30000,
-				connectionParams: () => {
-					return { headers: getHeaders() };
-				},
-			},
-			webSocketImpl: LoggingWebSocket,
-		});
-
-		const errorLink = onError(({ graphQLErrors, networkError, response }) => {
-			if (graphQLErrors) {
-				graphQLErrors.map(({ message, locations, path, extensions }) => {
-					console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
-					if (!message.includes('input')) sweetErrorAlert(message);
-				});
-			}
-			if (networkError) console.log(`[Network error]: ${networkError}`);
-			// @ts-ignore
-			if (networkError?.statusCode === 401) {
-			}
-		});
-
-		const splitLink = split(
-			({ query }) => {
-				const definition = getMainDefinition(query);
-				return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
-			},
-			wsLink,
-			authLink.concat(link),
-		);
-
-		return from([errorLink, tokenRefreshLink, splitLink]);
+	const current = socketVar();
+	if (!forceReconnect && current && (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)) {
+		return;
 	}
+
+	if (current) {
+		try {
+			current.close();
+		} catch {
+			/* ignore */
+		}
+	}
+
+	const socket = new WebSocket(getChatWebSocketUrl());
+	socketVar(socket);
+
+	socket.onopen = () => {
+		console.log('[Chat] WebSocket connected');
+	};
+
+	socket.onerror = (error) => {
+		console.error('[Chat] WebSocket error:', error);
+	};
+
+	socket.onclose = () => {
+		console.log('[Chat] WebSocket closed');
+	};
+}
+
+function createIsomorphicLink() {
+	// @ts-ignore — apollo-upload-client default export
+	const uploadLink = new createUploadLink({
+		uri: process.env.REACT_APP_API_GRAPHQL_URL || 'http://localhost:3007/graphql',
+	});
+
+	if (typeof window === 'undefined') {
+		return uploadLink;
+	}
+
+	initChatWebSocket();
+
+	const authLink = new ApolloLink((operation, forward) => {
+		operation.setContext(({ headers = {} }) => ({
+			headers: {
+				...headers,
+				...getHeaders(),
+			},
+		}));
+		return forward(operation);
+	});
+
+	const errorLink = onError(({ graphQLErrors, networkError }) => {
+		if (graphQLErrors) {
+			graphQLErrors.forEach(({ message, locations, path }) => {
+				console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
+				if (!message.includes('input')) sweetErrorAlert(message);
+			});
+		}
+		if (networkError) console.log(`[Network error]: ${networkError}`);
+	});
+
+	return from([errorLink, tokenRefreshLink, authLink.concat(uploadLink)]);
 }
 
 function createApolloClient() {
@@ -136,20 +130,3 @@ export function initializeApollo(initialState = null) {
 export function useApollo(initialState: any) {
 	return useMemo(() => initializeApollo(initialState), [initialState]);
 }
-
-/**
-import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
-
-// No Subscription required for develop process
-
-const httpLink = createHttpLink({
-  uri: "http://localhost:3007/graphql",
-});
-
-const client = new ApolloClient({
-  link: httpLink,
-  cache: new InMemoryCache(),
-});
-
-export default client;
-*/
